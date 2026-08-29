@@ -1,0 +1,45 @@
+@media (hover: none), (pointer: coarse) {
+  .game-shell {
+    padding: 0;
+  }
+
+  .game-stage {
+    width: min(100vw, calc(100svh * 16 / 9));
+  }
+
+  .mobile-controls {
+    display: grid;
+  }
+}
+
+@media (orientation: portrait) and (hover: none),
+  (orientation: portrait) and (pointer: coarse) {
+  .game-shell {
+    display: none;
+  }
+
+  .rotate-notice {
+    display: grid;
+    min-height: 100svh;
+    align-content: center;
+    justify-items: center;
+    gap: 14px;
+    padding: 24px;
+    background: var(--page-background);
+    text-align: center;
+  }
+}
+
+@media (max-height: 440px) and (orientation: landscape) {
+  .mobile-controls {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+    grid-template: repeat(2, 46px) / repeat(3, 46px);
+    gap: 4px;
+  }
+
+  .direction-button {
+    border-radius: 12px;
+    font-size: 18px;
+  }
+}

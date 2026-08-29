@@ -1,0 +1,9 @@
+:root {
+  --game-aspect-ratio: 16 / 9;
+  --page-background: #090b08;
+  --control-background: rgb(10 15 9 / 72%);
+  --control-border: rgb(209 237 128 / 80%);
+  --control-text: #efffc7;
+  --message-background: rgb(9 11 8 / 86%);
+  --message-text: #efffc7;
+}
