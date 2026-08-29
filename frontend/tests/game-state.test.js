@@ -87,6 +87,12 @@ test("카메라가 전체 맵 범위 안에서 주인공을 따라간다", () =>
   assert(edgeCamera.x === 2496 && edgeCamera.y === 640, "카메라가 맵 경계를 벗어났습니다.");
 });
 
+test("카메라가 브라우저 화면 크기를 기준으로 계산된다", () => {
+  const state = createGameState(GAME_CONFIG);
+  const camera = getCameraPosition(state.player, GAME_CONFIG, { width: 1280, height: 800 });
+  assert(camera.x === 928 && camera.y === 0, "브라우저 크기가 카메라에 반영되지 않았습니다.");
+});
+
 const results = document.querySelector("#results");
 let passed = 0;
 

@@ -17,16 +17,14 @@ body {
   display: grid;
   min-height: 100svh;
   place-items: center;
-  padding: 16px;
 }
 
 .game-stage {
   position: relative;
-  width: min(100%, calc((100svh - 32px) * 16 / 9), 1024px);
-  aspect-ratio: var(--game-aspect-ratio);
+  width: 100vw;
+  height: 100svh;
   overflow: hidden;
   background: #fff;
-  box-shadow: 0 24px 72px rgb(0 0 0 / 45%);
 }
 
 #game-canvas {

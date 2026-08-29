@@ -45,12 +45,12 @@ export function moveWithAxisCollisions(position, deltaX, deltaY, canOccupy) {
   return { x, y };
 }
 
-export function getCameraPosition(player, config) {
-  const targetX = player.x + player.size / 2 - config.canvas.width / 2;
-  const targetY = player.y + player.size / 2 - config.canvas.height / 2;
+export function getCameraPosition(player, config, viewport = config.canvas) {
+  const targetX = player.x + player.size / 2 - viewport.width / 2;
+  const targetY = player.y + player.size / 2 - viewport.height / 2;
   return {
-    x: Math.max(0, Math.min(targetX, config.world.width - config.canvas.width)),
-    y: Math.max(0, Math.min(targetY, config.world.height - config.canvas.height)),
+    x: Math.max(0, Math.min(targetX, Math.max(0, config.world.width - viewport.width))),
+    y: Math.max(0, Math.min(targetY, Math.max(0, config.world.height - viewport.height))),
   };
 }
 
@@ -72,22 +72,26 @@ export class GameController {
     this.assetError = assetError;
     this.config = config;
     this.state = createGameState(config);
+    this.viewport = { ...config.canvas };
     this.images = null;
     this.mapPixels = null;
     this.animationFrameId = null;
     this.previousTimestamp = null;
     this.pointerDirections = new Map();
 
-    this.context.imageSmoothingEnabled = false;
     this.canvas.width = config.canvas.width;
     this.canvas.height = config.canvas.height;
+    this.context.imageSmoothingEnabled = false;
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
     this.handleBlur = this.handleBlur.bind(this);
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
     this.handleOrientationChange = this.handleOrientationChange.bind(this);
+    this.handleResize = this.handleResize.bind(this);
     this.tick = this.tick.bind(this);
+
+    this.handleResize();
   }
 
   async start() {
@@ -117,6 +121,7 @@ export class GameController {
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
     window.addEventListener("blur", this.handleBlur);
+    window.addEventListener("resize", this.handleResize);
     window.addEventListener("orientationchange", this.handleOrientationChange);
     document.addEventListener("visibilitychange", this.handleVisibilityChange);
 
@@ -186,6 +191,27 @@ export class GameController {
   handleOrientationChange() {
     this.clearAllInput();
     this.previousTimestamp = null;
+    requestAnimationFrame(this.handleResize);
+  }
+
+  handleResize() {
+    this.clearAllInput();
+    const width = Math.max(1, Math.round(this.canvas.clientWidth || this.config.canvas.width));
+    const height = Math.max(1, Math.round(this.canvas.clientHeight || this.config.canvas.height));
+
+    if (this.viewport.width === width && this.viewport.height === height) {
+      return;
+    }
+
+    this.viewport = { width, height };
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.context.imageSmoothingEnabled = false;
+    this.previousTimestamp = null;
+
+    if (this.images) {
+      this.render();
+    }
   }
 
   clearAllInput() {
@@ -289,14 +315,16 @@ export class GameController {
   }
 
   render() {
-    const { width, height } = this.config.canvas;
+    const { width, height } = this.viewport;
     const player = this.state.player;
     const monster = this.state.monster;
-    const camera = getCameraPosition(player, this.config);
+    const camera = getCameraPosition(player, this.config, this.viewport);
+    const mapWidth = Math.min(width, this.config.world.width);
+    const mapHeight = Math.min(height, this.config.world.height);
 
     this.context.fillStyle = "#ffffff";
     this.context.fillRect(0, 0, width, height);
-    this.context.drawImage(this.images.map, camera.x, camera.y, width, height, 0, 0, width, height);
+    this.context.drawImage(this.images.map, camera.x, camera.y, mapWidth, mapHeight, 0, 0, mapWidth, mapHeight);
     if (monster.enabled) {
       this.context.drawImage(
         this.images.monster,

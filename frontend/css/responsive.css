@@ -1,10 +1,7 @@
 @media (hover: none), (pointer: coarse) {
-  .game-shell {
-    padding: 0;
-  }
-
   .game-stage {
-    width: min(100vw, calc(100svh * 16 / 9));
+    width: 100vw;
+    height: 100svh;
   }
 
   .mobile-controls {
