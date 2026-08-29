@@ -24,15 +24,34 @@ export function moveWithAxisCollisions(position, deltaX, deltaY, canOccupy) {
   let x = position.x;
   let y = position.y;
 
-  if (deltaX !== 0 && canOccupy(x + deltaX, y)) {
-    x += deltaX;
+  const horizontalSteps = Math.ceil(Math.abs(deltaX));
+  const horizontalStep = horizontalSteps === 0 ? 0 : deltaX / horizontalSteps;
+  for (let step = 0; step < horizontalSteps; step += 1) {
+    if (!canOccupy(x + horizontalStep, y)) {
+      break;
+    }
+    x += horizontalStep;
   }
 
-  if (deltaY !== 0 && canOccupy(x, y + deltaY)) {
-    y += deltaY;
+  const verticalSteps = Math.ceil(Math.abs(deltaY));
+  const verticalStep = verticalSteps === 0 ? 0 : deltaY / verticalSteps;
+  for (let step = 0; step < verticalSteps; step += 1) {
+    if (!canOccupy(x, y + verticalStep)) {
+      break;
+    }
+    y += verticalStep;
   }
 
   return { x, y };
+}
+
+export function getCameraPosition(player, config) {
+  const targetX = player.x + player.size / 2 - config.canvas.width / 2;
+  const targetY = player.y + player.size / 2 - config.canvas.height / 2;
+  return {
+    x: Math.max(0, Math.min(targetX, config.world.width - config.canvas.width)),
+    y: Math.max(0, Math.min(targetY, config.world.height - config.canvas.height)),
+  };
 }
 
 function loadImage(source) {
@@ -179,38 +198,33 @@ export class GameController {
 
   prepareMapCollision() {
     const collisionCanvas = document.createElement("canvas");
-    collisionCanvas.width = this.config.canvas.width;
-    collisionCanvas.height = this.config.canvas.height;
+    collisionCanvas.width = this.config.world.width;
+    collisionCanvas.height = this.config.world.height;
     const collisionContext = collisionCanvas.getContext("2d", { willReadFrequently: true });
     collisionContext.imageSmoothingEnabled = false;
     collisionContext.clearRect(0, 0, collisionCanvas.width, collisionCanvas.height);
-    collisionContext.drawImage(
-      this.images.map,
-      this.config.mapCrop.x,
-      this.config.mapCrop.y,
-      this.config.mapCrop.width,
-      this.config.mapCrop.height,
-      0,
-      0,
-      this.config.canvas.width,
-      this.config.canvas.height,
-    );
+    collisionContext.drawImage(this.images.map, 0, 0);
     this.mapPixels = collisionContext.getImageData(0, 0, collisionCanvas.width, collisionCanvas.height).data;
   }
 
   isWalkablePixel(x, y) {
     const pixelX = Math.floor(x);
     const pixelY = Math.floor(y);
-    if (pixelX < 0 || pixelY < 0 || pixelX >= this.config.canvas.width || pixelY >= this.config.canvas.height) {
+    if (pixelX < 0 || pixelY < 0 || pixelX >= this.config.world.width || pixelY >= this.config.world.height) {
       return false;
     }
 
-    const index = (pixelY * this.config.canvas.width + pixelX) * 4;
+    const index = (pixelY * this.config.world.width + pixelX) * 4;
     const red = this.mapPixels[index];
     const green = this.mapPixels[index + 1];
     const blue = this.mapPixels[index + 2];
     const alpha = this.mapPixels[index + 3];
-    return alpha > 32 && green > 45 && green > red * 1.12 && green > blue * 1.18;
+    return (
+      alpha > 32
+      && green >= this.config.collision.minimumGreen
+      && green > red * 1.12
+      && green > blue * 1.18
+    );
   }
 
   getPlayerCollisionBox(x, y) {
@@ -238,8 +252,8 @@ export class GameController {
     if (
       x < 0
       || y < 0
-      || x + player.size > this.config.canvas.width
-      || y + player.size > this.config.canvas.height
+      || x + player.size > this.config.world.width
+      || y + player.size > this.config.world.height
     ) {
       return false;
     }
@@ -255,7 +269,10 @@ export class GameController {
       return false;
     }
 
-    return !rectanglesOverlap(this.getPlayerCollisionBox(x, y), this.getMonsterCollisionBox());
+    return (
+      !this.state.monster.enabled
+      || !rectanglesOverlap(this.getPlayerCollisionBox(x, y), this.getMonsterCollisionBox())
+    );
   }
 
   update(deltaSeconds) {
@@ -273,18 +290,34 @@ export class GameController {
 
   render() {
     const { width, height } = this.config.canvas;
-    const crop = this.config.mapCrop;
     const player = this.state.player;
     const monster = this.state.monster;
+    const camera = getCameraPosition(player, this.config);
 
     this.context.fillStyle = "#ffffff";
     this.context.fillRect(0, 0, width, height);
-    this.context.drawImage(this.images.map, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
-    this.context.drawImage(this.images.monster, monster.x, monster.y, monster.size, monster.size);
-    this.context.drawImage(this.images.player, player.x, player.y, player.size, player.size);
+    this.context.drawImage(this.images.map, camera.x, camera.y, width, height, 0, 0, width, height);
+    if (monster.enabled) {
+      this.context.drawImage(
+        this.images.monster,
+        monster.x - camera.x,
+        monster.y - camera.y,
+        monster.size,
+        monster.size,
+      );
+    }
+    this.context.drawImage(
+      this.images.player,
+      player.x - camera.x,
+      player.y - camera.y,
+      player.size,
+      player.size,
+    );
 
     this.canvas.dataset.playerX = player.x.toFixed(2);
     this.canvas.dataset.playerY = player.y.toFixed(2);
+    this.canvas.dataset.cameraX = camera.x.toFixed(2);
+    this.canvas.dataset.cameraY = camera.y.toFixed(2);
   }
 
   tick(timestamp) {

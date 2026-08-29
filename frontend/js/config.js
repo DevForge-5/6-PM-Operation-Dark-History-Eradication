@@ -3,21 +3,22 @@ export const GAME_CONFIG = Object.freeze({
     width: 1024,
     height: 576,
   }),
+  world: Object.freeze({
+    width: 3520,
+    height: 1216,
+  }),
   movementSpeed: 192,
   maxDeltaSeconds: 0.05,
+  collision: Object.freeze({
+    minimumGreen: 80,
+  }),
   assets: Object.freeze({
     map: "./assets/images/map-base.png",
     player: "./assets/images/player-front.png",
     monster: "./assets/images/shadow-monster.png",
   }),
-  mapCrop: Object.freeze({
-    x: 1408,
-    y: 0,
-    width: 1024,
-    height: 576,
-  }),
   player: Object.freeze({
-    x: 128,
+    x: 1536,
     y: 192,
     size: 64,
     footInsetX: 14,
@@ -27,7 +28,8 @@ export const GAME_CONFIG = Object.freeze({
     collisionBottom: 4,
   }),
   monster: Object.freeze({
-    x: 768,
+    enabled: false,
+    x: 2176,
     y: 128,
     size: 128,
     collisionInsetX: 24,

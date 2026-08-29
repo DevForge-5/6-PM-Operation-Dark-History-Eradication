@@ -15,6 +15,7 @@ export function createGameState(config) {
       size: config.player.size,
     },
     monster: {
+      enabled: config.monster.enabled,
       x: config.monster.x,
       y: config.monster.y,
       size: config.monster.size,

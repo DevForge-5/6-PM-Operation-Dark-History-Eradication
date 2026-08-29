@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../js/config.js";
-import { moveWithAxisCollisions } from "../js/game/game-controller.js";
+import { getCameraPosition, moveWithAxisCollisions } from "../js/game/game-controller.js";
 import {
   clearInput,
   createGameState,
@@ -25,8 +25,8 @@ function nearlyEqual(actual, expected, tolerance = 0.0001) {
 
 test("초기 좌표가 설정값과 같다", () => {
   const state = createGameState(GAME_CONFIG);
-  assert(state.player.x === 128 && state.player.y === 192, "주인공 초기 좌표가 다릅니다.");
-  assert(state.monster.x === 768 && state.monster.y === 128, "괴물 초기 좌표가 다릅니다.");
+  assert(state.player.x === 1536 && state.player.y === 192, "주인공 초기 좌표가 다릅니다.");
+  assert(state.monster.enabled === false, "괴물이 비활성화되지 않았습니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {
@@ -62,7 +62,29 @@ test("막힌 축은 멈추고 열린 축으로 미끄러진다", () => {
     3,
     (x, y) => x >= 0 && y >= 0 && x <= 10 && y <= 10,
   );
-  assert(next.x === 5 && next.y === 8, "축별 충돌 처리가 올바르지 않습니다.");
+  assert(next.x === 0 && next.y === 8, "축별 충돌 처리가 올바르지 않습니다.");
+});
+
+test("얇은 벽도 한 프레임에 건너뛰지 않는다", () => {
+  const next = moveWithAxisCollisions(
+    { x: 0, y: 0 },
+    10,
+    0,
+    (x) => x < 4 || x > 6,
+  );
+  assert(next.x === 3, "얇은 벽을 건너뛰었습니다.");
+});
+
+test("카메라가 전체 맵 범위 안에서 주인공을 따라간다", () => {
+  const state = createGameState(GAME_CONFIG);
+  const camera = getCameraPosition(state.player, GAME_CONFIG);
+  assert(camera.x === 1056 && camera.y === 0, "초기 카메라 위치가 올바르지 않습니다.");
+
+  const edgeCamera = getCameraPosition(
+    { x: GAME_CONFIG.world.width - 64, y: GAME_CONFIG.world.height - 64, size: 64 },
+    GAME_CONFIG,
+  );
+  assert(edgeCamera.x === 2496 && edgeCamera.y === 640, "카메라가 맵 경계를 벗어났습니다.");
 });
 
 const results = document.querySelector("#results");
