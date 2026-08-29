@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>6PM 브라우저 테스트</title>
+    <link rel="icon" href="data:,">
+    <style>
+      body { max-width: 760px; margin: 40px auto; padding: 0 20px; color: #e9f7d0; background: #0d110b; font: 16px/1.6 system-ui, sans-serif; }
+      .pass { color: #baff6a; }
+      .fail { color: #ff8f8f; }
+    </style>
+  </head>
+  <body>
+    <h1>6PM 브라우저 테스트</h1>
+    <p id="summary" role="status">테스트 실행 중…</p>
+    <ol id="results"></ol>
+    <script type="module" src="./game-state.test.js"></script>
+  </body>
+</html>

@@ -1,0 +1,112 @@
+html {
+  background: var(--page-background);
+}
+
+body {
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, #1a2116 0%, var(--page-background) 68%),
+    var(--page-background);
+  color: var(--message-text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overscroll-behavior: none;
+}
+
+.game-shell {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+}
+
+.game-stage {
+  position: relative;
+  width: 100vw;
+  height: 100svh;
+  overflow: hidden;
+  background: #fff;
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.mobile-controls {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(18px, env(safe-area-inset-left));
+  display: none;
+  grid-template: repeat(2, 56px) / repeat(3, 56px);
+  gap: 5px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.direction-button {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--control-border);
+  border-radius: 14px;
+  background: var(--control-background);
+  color: var(--control-text);
+  font-size: 21px;
+  line-height: 1;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.direction-button.is-pressed {
+  background: rgb(91 126 28 / 90%);
+  transform: translateY(1px);
+}
+
+.direction-button--up {
+  grid-area: 1 / 2;
+}
+
+.direction-button--left {
+  grid-area: 2 / 1;
+}
+
+.direction-button--down {
+  grid-area: 2 / 2;
+}
+
+.direction-button--right {
+  grid-area: 2 / 3;
+}
+
+.screen-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  background: var(--message-background);
+  color: var(--message-text);
+  text-align: center;
+}
+
+.screen-message[hidden] {
+  display: none;
+}
+
+.screen-message--error {
+  color: #ffd7d7;
+}
+
+.rotate-notice {
+  display: none;
+}
+
+.rotate-notice__icon {
+  font-size: 48px;
+}
