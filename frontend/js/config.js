@@ -10,10 +10,13 @@ export const GAME_CONFIG = Object.freeze({
   movementSpeed: 192,
   maxDeltaSeconds: 0.05,
   collision: Object.freeze({
-    minimumGreen: 80,
+    tileSize: 64,
+    minimumFloorGreen: 130,
+    minimumFloorCoverage: 0.7,
   }),
   assets: Object.freeze({
-    map: "./assets/images/map-base.png",
+    map: "./assets/images/MapGrid.png",
+    collisionMap: "./assets/images/map-base.png",
     player: Object.freeze({
       down: "./assets/images/player-front.png",
       up: "./assets/images/player-back.png",
@@ -21,6 +24,12 @@ export const GAME_CONFIG = Object.freeze({
       right: "./assets/images/player-right.png",
     }),
     monster: "./assets/images/shadow-monster.png",
+  }),
+  mapCrop: Object.freeze({
+    x: 301,
+    y: 529,
+    width: 3520,
+    height: 1216,
   }),
   player: Object.freeze({
     x: 1536,
@@ -32,7 +41,7 @@ export const GAME_CONFIG = Object.freeze({
     collisionTop: 32,
     collisionBottom: 4,
   }),
-  // NOTE: the current prototype map (map-base.png) only has a walkable
+  // NOTE: the current prototype map only has a walkable
   // corridor up to ~x2300 (there's a solid pillar right after that), so a
   // second physical encounter doesn't fit here yet. musicRoomSiren's event
   // data still exists in data/events.js for when a room extension is added.

@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../js/config.js";
-import { getCameraPosition, moveWithAxisCollisions } from "../js/game/game-controller.js";
+import { createWalkableTileMap, getCameraPosition, moveWithAxisCollisions } from "../js/game/game-controller.js";
 import {
   advanceTime,
   applyCringeDelta,
@@ -32,6 +32,31 @@ test("초기 좌표가 설정값과 같다", () => {
   const state = createGameState(GAME_CONFIG);
   assert(state.player.x === 1536 && state.player.y === 192, "주인공 초기 좌표가 다릅니다.");
   assert(state.encounters.length > 0 && state.encounters.every((e) => e.enabled), "조우 지점이 모두 활성화되어 있어야 합니다.");
+});
+
+test("새 맵 crop 크기가 게임 월드와 같다", () => {
+  assert(GAME_CONFIG.assets.map.endsWith("/MapGrid.png"), "새 맵 이미지가 설정되지 않았습니다.");
+  assert(GAME_CONFIG.assets.collisionMap.endsWith("/map-base.png"), "벽 충돌 마스크가 설정되지 않았습니다.");
+  assert(GAME_CONFIG.mapCrop.width === GAME_CONFIG.world.width, "맵 crop 너비가 월드와 다릅니다.");
+  assert(GAME_CONFIG.mapCrop.height === GAME_CONFIG.world.height, "맵 crop 높이가 월드와 다릅니다.");
+  assert(GAME_CONFIG.world.width % GAME_CONFIG.collision.tileSize === 0, "월드 너비가 충돌 타일에 맞지 않습니다.");
+  assert(GAME_CONFIG.world.height % GAME_CONFIG.collision.tileSize === 0, "월드 높이가 충돌 타일에 맞지 않습니다.");
+});
+
+test("바닥 타일만 이동 가능하고 벽 타일은 차단된다", () => {
+  const pixels = new Uint8ClampedArray(4 * 2 * 4);
+  for (let y = 0; y < 2; y += 1) {
+    for (let x = 0; x < 4; x += 1) {
+      const index = (y * 4 + x) * 4;
+      const color = x < 2 ? [106, 143, 26, 255] : [156, 156, 156, 255];
+      pixels.set(color, index);
+    }
+  }
+
+  const collision = { tileSize: 2, minimumFloorGreen: 130, minimumFloorCoverage: 0.7 };
+  const tileMap = createWalkableTileMap(pixels, 4, 2, collision);
+  assert(tileMap.data[0] === 1, "바닥 타일이 이동 불가로 판정됐습니다.");
+  assert(tileMap.data[1] === 0, "벽 타일이 이동 가능으로 판정됐습니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {
