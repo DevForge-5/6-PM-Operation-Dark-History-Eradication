@@ -9,7 +9,6 @@ export function createStoryScene({ root, goTo }) {
   let node = null;
   let dialog = null;
   let index = 0;
-  let handleClick = null;
 
   function mount() {
     node = document.createElement("section");
@@ -20,7 +19,7 @@ export function createStoryScene({ root, goTo }) {
     dialog = createDialogBox({ root: node });
     dialog.show(INTRO_LINES[index]);
 
-    handleClick = () => {
+    const advanceStory = () => {
       index += 1;
       if (index >= INTRO_LINES.length) {
         goTo("exploration");
@@ -28,11 +27,10 @@ export function createStoryScene({ root, goTo }) {
       }
       dialog.show(INTRO_LINES[index]);
     };
-    node.addEventListener("click", handleClick);
+    dialog.setAdvanceHandler(advanceStory);
   }
 
   function unmount() {
-    node?.removeEventListener("click", handleClick);
     dialog?.destroy();
     dialog = null;
     node?.remove();

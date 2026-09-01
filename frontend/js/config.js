@@ -15,10 +15,10 @@ export const GAME_CONFIG = Object.freeze({
   assets: Object.freeze({
     map: "./assets/images/map-base.png",
     player: Object.freeze({
-      down: "./assets/images/player-front.png",
-      up: "./assets/images/player-back.png",
-      left: "./assets/images/player-left.png",
-      right: "./assets/images/player-right.png",
+      down: "./assets/images/playerAction/Front.png",
+      up: "./assets/images/playerAction/Back.png",
+      left: "./assets/images/playerAction/Left.png",
+      right: "./assets/images/playerAction/Right.png",
     }),
     monster: "./assets/images/shadow-monster.png",
   }),
@@ -31,6 +31,8 @@ export const GAME_CONFIG = Object.freeze({
     collisionInsetX: 16,
     collisionTop: 32,
     collisionBottom: 4,
+    animationFrameCount: 4,
+    animationFrameDuration: 0.14,
   }),
   // NOTE: the current prototype map (map-base.png) only has a walkable
   // corridor up to ~x2300 (there's a solid pillar right after that), so a

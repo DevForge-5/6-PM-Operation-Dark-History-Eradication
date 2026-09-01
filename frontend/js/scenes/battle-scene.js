@@ -18,18 +18,7 @@ export function createBattleScene({ root, session, payload, goTo }) {
   let hud = null;
   let dialog = null;
   let choicePanel = null;
-  let onNodeClick = null;
   let introIndex = 0;
-
-  function setNodeClick(handler) {
-    if (onNodeClick) {
-      node.removeEventListener("click", onNodeClick);
-    }
-    onNodeClick = handler;
-    if (onNodeClick) {
-      node.addEventListener("click", onNodeClick);
-    }
-  }
 
   function mount() {
     node = document.createElement("section");
@@ -40,7 +29,7 @@ export function createBattleScene({ root, session, payload, goTo }) {
     hud = createHud({ root: node, stats: session.stats });
     dialog = createDialogBox({ root: node });
     dialog.show(event.intro[introIndex]);
-    setNodeClick(advanceIntro);
+    dialog.setAdvanceHandler(advanceIntro);
   }
 
   function advanceIntro() {
@@ -50,7 +39,6 @@ export function createBattleScene({ root, session, payload, goTo }) {
       return;
     }
 
-    setNodeClick(null);
     dialog.destroy();
     dialog = null;
     choicePanel = createChoicePanel({
@@ -87,7 +75,7 @@ export function createBattleScene({ root, session, payload, goTo }) {
 
     dialog = createDialogBox({ root: node });
     dialog.show(outcome.resultText);
-    setNodeClick(finishBattle);
+    dialog.setAdvanceHandler(finishBattle);
   }
 
   function triggerCringeFeedback() {
@@ -103,7 +91,6 @@ export function createBattleScene({ root, session, payload, goTo }) {
   }
 
   function finishBattle() {
-    setNodeClick(null);
     if (isHpDepleted(session.stats) || isCringeMaxed(session.stats) || isTimeUp(session.stats)) {
       goTo("ending");
     } else {
@@ -112,7 +99,6 @@ export function createBattleScene({ root, session, payload, goTo }) {
   }
 
   function unmount() {
-    setNodeClick(null);
     choicePanel?.destroy();
     choicePanel = null;
     dialog?.destroy();

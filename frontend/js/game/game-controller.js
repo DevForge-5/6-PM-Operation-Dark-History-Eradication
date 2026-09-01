@@ -114,6 +114,8 @@ export class GameController {
     this.animationFrameId = null;
     this.previousTimestamp = null;
     this.pointerDirections = new Map();
+    this.playerAnimationFrame = 0;
+    this.playerAnimationElapsed = 0;
 
     this.canvas.width = config.canvas.width;
     this.canvas.height = config.canvas.height;
@@ -377,6 +379,7 @@ export class GameController {
 
   update(deltaSeconds) {
     const movement = getMovementVector(this.state.input);
+    const isMoving = movement.x !== 0 || movement.y !== 0;
     const distance = this.config.movementSpeed * deltaSeconds;
     const nextPosition = moveWithAxisCollisions(
       this.state.player,
@@ -387,6 +390,22 @@ export class GameController {
     this.state.player.x = nextPosition.x;
     this.state.player.y = nextPosition.y;
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
+
+    if (isMoving) {
+      this.playerAnimationElapsed += deltaSeconds;
+      if (this.playerAnimationElapsed >= this.config.player.animationFrameDuration) {
+        const advancedFrames = Math.floor(
+          this.playerAnimationElapsed / this.config.player.animationFrameDuration,
+        );
+        this.playerAnimationFrame = (
+          this.playerAnimationFrame + advancedFrames
+        ) % this.config.player.animationFrameCount;
+        this.playerAnimationElapsed %= this.config.player.animationFrameDuration;
+      }
+    } else {
+      this.playerAnimationFrame = 0;
+      this.playerAnimationElapsed = 0;
+    }
 
     const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
 
@@ -460,8 +479,14 @@ export class GameController {
       );
     }
 
+    const playerSprite = this.images.player[player.facing];
+    const sourceSize = playerSprite.height;
     this.context.drawImage(
-      this.images.player[player.facing],
+      playerSprite,
+      this.playerAnimationFrame * sourceSize,
+      0,
+      sourceSize,
+      sourceSize,
       player.x - camera.x,
       player.y - camera.y,
       player.size,

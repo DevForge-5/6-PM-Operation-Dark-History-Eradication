@@ -127,7 +127,7 @@
 }
 
 .dialog-box::after {
-  content: "▶ 클릭하여 계속";
+  content: "▶ 클릭하거나 Space바를 눌러 계속";
   position: absolute;
   right: clamp(30px, 4vw, 72px);
   bottom: clamp(18px, 2vw, 32px);
