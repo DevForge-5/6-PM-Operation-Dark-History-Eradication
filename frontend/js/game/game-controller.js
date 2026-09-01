@@ -72,9 +72,11 @@ export class GameController {
     config,
     stats,
     clearedEventIds,
+    collectedItemIds,
     onFrame,
     onEncounter,
     onReachGoal,
+    onPickup,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -93,6 +95,14 @@ export class GameController {
         }
       }
     }
+    if (collectedItemIds) {
+      for (const pickup of this.state.pickups) {
+        if (collectedItemIds.has(pickup.itemId)) {
+          pickup.enabled = false;
+        }
+      }
+    }
+    this.onPickup = onPickup;
     this.onFrame = onFrame;
     this.onEncounter = onEncounter;
     this.onReachGoal = onReachGoal;
@@ -378,11 +388,24 @@ export class GameController {
     this.state.player.y = nextPosition.y;
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
 
+    const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
+
     if (!this.goalReached && this.config.goal) {
-      const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
       if (rectanglesOverlap(playerBox, this.getGoalBox())) {
         this.goalReached = true;
         this.onReachGoal?.();
+      }
+    }
+
+    for (const pickup of this.state.pickups) {
+      if (!pickup.enabled) {
+        continue;
+      }
+
+      const pickupBox = { x: pickup.x, y: pickup.y, width: pickup.size, height: pickup.size };
+      if (rectanglesOverlap(playerBox, pickupBox)) {
+        pickup.enabled = false;
+        this.onPickup?.(pickup.itemId);
       }
     }
   }
@@ -405,6 +428,22 @@ export class GameController {
       this.context.strokeStyle = "#78dcff";
       this.context.lineWidth = 2;
       this.context.strokeRect(goal.x - camera.x, goal.y - camera.y, goal.size, goal.size);
+    }
+
+    for (const pickup of this.state.pickups) {
+      if (!pickup.enabled) {
+        continue;
+      }
+
+      const centerX = pickup.x - camera.x + pickup.size / 2;
+      const centerY = pickup.y - camera.y + pickup.size / 2;
+      this.context.fillStyle = "#ffd76a";
+      this.context.beginPath();
+      this.context.arc(centerX, centerY, pickup.size / 2, 0, Math.PI * 2);
+      this.context.fill();
+      this.context.strokeStyle = "#a9702a";
+      this.context.lineWidth = 2;
+      this.context.stroke();
     }
 
     for (const encounter of this.state.encounters) {

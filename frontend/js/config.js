@@ -53,6 +53,15 @@ export const GAME_CONFIG = Object.freeze({
     y: 195,
     size: 60,
   }),
+  pickups: Object.freeze([
+    Object.freeze({
+      id: "earbudsPickup",
+      itemId: "noiseCancelingEarbuds",
+      x: 1820,
+      y: 180,
+      size: 56,
+    }),
+  ]),
   stats: Object.freeze({
     startMinutes: 17 * 60,
     limitMinutes: 18 * 60,

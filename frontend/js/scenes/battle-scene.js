@@ -53,12 +53,21 @@ export function createBattleScene({ root, session, payload, goTo }) {
     setNodeClick(null);
     dialog.destroy();
     dialog = null;
-    choicePanel = createChoicePanel({ root: node, choices: event.choices, onSelect: handleChoice });
+    choicePanel = createChoicePanel({
+      root: node,
+      choices: event.choices,
+      inventory: session.inventory,
+      onSelect: handleChoice,
+    });
   }
 
   async function handleChoice(choice) {
     choicePanel.destroy();
     choicePanel = null;
+
+    if (choice.requiresItem) {
+      session.inventory.delete(choice.requiresItem);
+    }
 
     let outcome = choice.effect;
     if (choice.type === "qte") {

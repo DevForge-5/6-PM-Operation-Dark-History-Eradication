@@ -18,6 +18,7 @@ export const EVENTS = Object.freeze({
         id: "item",
         label: "[아이템] 에어팟 착용",
         type: "instant",
+        requiresItem: "noiseCancelingEarbuds",
         effect: { cringeDelta: -20, minutesDelta: 5, resultText: "노이즈 캔슬링으로 목소리가 차단된다." },
       },
       {

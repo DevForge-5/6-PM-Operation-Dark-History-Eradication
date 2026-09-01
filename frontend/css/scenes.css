@@ -131,6 +131,32 @@
   outline: none;
 }
 
+.choice-panel__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.choice-panel__button:disabled:hover {
+  background: rgb(20 16 10 / 92%);
+}
+
+/* Pickup toast (exploration) */
+.pickup-toast {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgb(20 16 10 / 92%);
+  border: 2px solid #ffd76a;
+  color: #ffd76a;
+  font-size: 14px;
+  font-weight: 700;
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* HUD */
 .hud {
   position: absolute;

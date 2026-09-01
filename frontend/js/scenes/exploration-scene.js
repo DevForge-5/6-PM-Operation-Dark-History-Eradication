@@ -1,5 +1,14 @@
 import { GameController } from "../game/game-controller.js";
 import { createHud } from "../ui/hud.js";
+import { ITEMS } from "../data/items.js";
+
+function showPickupToast(stage, text) {
+  const toast = document.createElement("div");
+  toast.className = "pickup-toast";
+  toast.textContent = text;
+  stage.appendChild(toast);
+  setTimeout(() => toast.remove(), 1800);
+}
 
 export function createExplorationScene({ root, config, session, goTo }) {
   let node = null;
@@ -23,9 +32,14 @@ export function createExplorationScene({ root, config, session, goTo }) {
       config,
       stats: session.stats,
       clearedEventIds: session.clearedEvents,
+      collectedItemIds: session.inventory,
       onFrame: () => hud.update(session.stats),
       onEncounter: (eventId) => goTo("battle", { eventId }),
       onReachGoal: () => goTo("ending"),
+      onPickup: (itemId) => {
+        session.inventory.add(itemId);
+        showPickupToast(stage, `${ITEMS[itemId]?.name ?? itemId} 획득!`);
+      },
     });
     controller.start();
   }

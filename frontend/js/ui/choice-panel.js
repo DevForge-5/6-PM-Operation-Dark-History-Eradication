@@ -1,14 +1,18 @@
-export function createChoicePanel({ root, choices, onSelect }) {
+export function createChoicePanel({ root, choices, inventory, onSelect }) {
   const node = document.createElement("div");
   node.className = "choice-panel";
   node.innerHTML = choices
-    .map((choice) => `<button type="button" class="choice-panel__button" data-choice-id="${choice.id}">${choice.label}</button>`)
+    .map((choice) => {
+      const locked = Boolean(choice.requiresItem) && !inventory?.has(choice.requiresItem);
+      const label = locked ? `${choice.label} (미보유)` : choice.label;
+      return `<button type="button" class="choice-panel__button" data-choice-id="${choice.id}"${locked ? " disabled" : ""}>${label}</button>`;
+    })
     .join("");
   root.appendChild(node);
 
   function handleClick(event) {
     const button = event.target.closest("[data-choice-id]");
-    if (!button) {
+    if (!button || button.disabled) {
       return;
     }
 
