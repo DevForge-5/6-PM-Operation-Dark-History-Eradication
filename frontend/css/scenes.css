@@ -203,40 +203,43 @@
   color: var(--message-text);
 }
 
-.hud__stat {
+.hud__meters {
   display: grid;
   gap: 4px;
-  width: 200px;
 }
 
-.hud__label {
-  font-size: 12px;
-  letter-spacing: 0.05em;
+.hud__stat {
+  --empty-ratio: 0;
+  position: relative;
+  width: clamp(240px, 38vw, 390px);
+  aspect-ratio: 4 / 1;
 }
 
-.hud__bar {
-  height: 10px;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 12%);
-  overflow: hidden;
-}
-
-.hud__bar-fill {
+.hud__stat-image {
+  display: block;
+  width: 100%;
   height: 100%;
+  object-fit: contain;
+}
+
+.hud__bar-empty {
+  position: absolute;
+  top: 47%;
+  right: 7.7%;
+  width: calc(69.9% * var(--empty-ratio));
+  height: 9.4%;
+  border-radius: 0 3px 3px 0;
+  background: #25130d;
   transition: width 120ms ease-out;
 }
 
-.hud__bar-fill--hp {
-  background: #ff4d4d;
-}
-
-.hud__bar-fill--cringe {
-  background: #b06bff;
-}
-
 .hud__clock {
-  font-size: 20px;
+  padding: 8px 12px;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(14px, 2vw, 20px);
   font-weight: 700;
+  color: #fff;
+  text-shadow: 2px 2px 0 #25130d;
 }
 
 /* QTE minigame overlay */
