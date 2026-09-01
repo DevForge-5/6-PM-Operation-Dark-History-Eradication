@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("../assets/fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Galmuri11";
+  src: url("../assets/fonts/Galmuri11.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 .scene-root {
   position: fixed;
   inset: 0;
@@ -11,59 +27,69 @@
 
 /* Title scene */
 .title-scene {
-  display: grid;
-  align-content: center;
-  justify-items: start;
-  gap: 28px;
-  padding: 12vh 8vw;
-  background:
-    radial-gradient(circle at 70% 30%, #3a2312 0%, transparent 55%),
-    var(--page-background);
-  color: var(--message-text);
+  background: #0b0908 url("../assets/images/IntroSchool.png") center / cover no-repeat;
+  color: #fff;
 }
 
-.title-scene__heading {
-  display: grid;
-  gap: 6px;
-}
-
-.title-scene__eyebrow {
-  font-size: 14px;
-  letter-spacing: 0.08em;
-  color: #ffb199;
+.title-scene__title {
+  position: absolute;
+  top: clamp(18px, 4vh, 58px);
+  left: clamp(18px, 2.5vw, 52px);
+  width: clamp(280px, 35vw, 900px);
+  margin: 0;
 }
 
 .title-scene__logo {
-  margin: 0;
-  font-size: clamp(40px, 9vw, 96px);
-  line-height: 1;
-  color: #ff5a3c;
-  text-shadow: 0 0 18px rgb(255 90 60 / 55%);
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
 }
 
 .title-scene__menu {
+  position: absolute;
+  bottom: max(clamp(22px, 4.5vh, 70px), env(safe-area-inset-bottom));
+  left: max(clamp(22px, 2.5vw, 54px), env(safe-area-inset-left));
   display: grid;
-  gap: 14px;
+  gap: clamp(14px, 3.8vh, 54px);
   list-style: none;
   padding: 0;
-  margin: 12px 0 0;
+  margin: 0;
 }
 
 .title-scene__menu-button {
+  position: relative;
   background: none;
   border: none;
-  padding: 4px 0;
-  font-size: 20px;
-  letter-spacing: 0.05em;
-  color: var(--message-text);
+  padding: 4px 10px 4px 0;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(22px, 2.5vw, 58px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: #fff;
   text-align: left;
+  text-shadow:
+    3px 0 #1b100c,
+    -3px 0 #1b100c,
+    0 3px #1b100c,
+    0 -3px #1b100c;
   cursor: pointer;
 }
 
 .title-scene__menu-button:hover,
 .title-scene__menu-button:focus-visible {
-  color: #ff5a3c;
+  color: #ffcc4d;
   outline: none;
+  transform: translateX(8px);
+}
+
+.title-scene__menu-button:hover::before,
+.title-scene__menu-button:focus-visible::before {
+  content: ">";
+  position: absolute;
+  right: 100%;
+  margin-right: 8px;
 }
 
 /* Story scene */
@@ -80,28 +106,33 @@
 /* Dialog box (story intro, battle lines) */
 .dialog-box {
   position: absolute;
-  left: 6vw;
-  right: 6vw;
-  bottom: 8vh;
-  min-height: 80px;
-  padding: 20px 24px 32px;
-  background: rgb(20 16 10 / 92%);
-  border: 2px solid #a9895c;
-  border-radius: 8px;
-  color: #f5e6c8;
-  font-size: 17px;
-  line-height: 1.6;
+  right: 5vw;
+  bottom: 6vh;
+  left: 5vw;
+  display: flex;
+  min-height: clamp(112px, 15vw, 180px);
+  align-items: center;
+  padding:
+    clamp(24px, 3vw, 50px)
+    clamp(30px, 4vw, 72px)
+    clamp(36px, 4.5vw, 62px);
+  background: url("../assets/images/DialogFrame.svg") center / 100% 100% no-repeat;
+  color: #2b2117;
+  font-family: "Galmuri11", sans-serif;
+  font-size: clamp(14px, 1.25vw, 22px);
+  line-height: 1.7;
   white-space: pre-line;
   cursor: pointer;
+  image-rendering: pixelated;
 }
 
 .dialog-box::after {
   content: "▶ 클릭하여 계속";
   position: absolute;
-  right: 16px;
-  bottom: 10px;
-  font-size: 12px;
-  opacity: 0.6;
+  right: clamp(30px, 4vw, 72px);
+  bottom: clamp(18px, 2vw, 32px);
+  font-size: clamp(10px, 0.8vw, 13px);
+  opacity: 0.72;
 }
 
 /* Choice panel */
