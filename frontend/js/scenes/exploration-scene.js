@@ -23,7 +23,7 @@ export function createExplorationScene({ root, config, session, goTo }) {
       config,
       stats: session.stats,
       onFrame: () => hud.update(session.stats),
-      onEncounterMonster: () => goTo("battle"),
+      onEncounterMonster: () => goTo("battle", { eventId: "hallwayShadow" }),
     });
     controller.start();
   }

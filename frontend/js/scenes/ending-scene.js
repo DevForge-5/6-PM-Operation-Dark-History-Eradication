@@ -1,28 +1,28 @@
-// TODO(FE-A, Day 3): 엔딩 분기(True/Bad 등) 로직으로 교체. 지금은 씬 전환 골격 확인용 자리표시자.
-export function createEndingScene({ root, goTo }) {
+import { createResultScreen } from "../ui/result-screen.js";
+import { resolveEnding } from "../data/endings.js";
+
+export function createEndingScene({ root, session, goTo }) {
   let node = null;
-  let handleClick = null;
+  let resultScreen = null;
 
   function mount() {
     node = document.createElement("section");
-    node.className = "scene placeholder-scene";
-    node.setAttribute("aria-label", "엔딩 씬 (준비 중)");
-    node.innerHTML = `
-      <p>엔딩 씬 준비 중…</p>
-      <button type="button" class="placeholder-scene__button" data-action="restart">처음으로</button>
-    `;
+    node.className = "scene ending-scene";
+    node.setAttribute("aria-label", "엔딩 화면");
     root.appendChild(node);
 
-    handleClick = (event) => {
-      if (event.target.closest("[data-action='restart']")) {
-        goTo("title");
-      }
-    };
-    node.addEventListener("click", handleClick);
+    const ending = resolveEnding(session.stats);
+    resultScreen = createResultScreen({
+      root: node,
+      ending,
+      stats: session.stats,
+      onRestart: () => goTo("title"),
+    });
   }
 
   function unmount() {
-    node?.removeEventListener("click", handleClick);
+    resultScreen?.destroy();
+    resultScreen = null;
     node?.remove();
     node = null;
   }

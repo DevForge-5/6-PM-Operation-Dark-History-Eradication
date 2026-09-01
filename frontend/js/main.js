@@ -22,7 +22,7 @@ class SceneManager {
     this.currentScene = null;
   }
 
-  goTo(name) {
+  goTo(name, payload) {
     const createScene = SCENE_FACTORIES[name];
     if (!createScene) {
       throw new Error(`알 수 없는 씬입니다: ${name}`);
@@ -37,7 +37,8 @@ class SceneManager {
       root: this.root,
       config: this.config,
       session: this.session,
-      goTo: (nextName) => this.goTo(nextName),
+      payload,
+      goTo: (nextName, nextPayload) => this.goTo(nextName, nextPayload),
     });
     this.currentScene.mount();
   }

@@ -3,11 +3,17 @@ import { createChoicePanel } from "../ui/choice-panel.js";
 import { createHud } from "../ui/hud.js";
 import { runQte } from "../minigames/qte.js";
 import { EVENTS } from "../data/events.js";
-import { applyCringeDelta, applyHpDelta, isCringeMaxed, isHpDepleted } from "../game/game-state.js";
+import {
+  advanceTime,
+  applyCringeDelta,
+  applyHpDelta,
+  isCringeMaxed,
+  isHpDepleted,
+  isTimeUp,
+} from "../game/game-state.js";
 
-const EVENT = EVENTS.hallwayShadow;
-
-export function createBattleScene({ root, session, goTo }) {
+export function createBattleScene({ root, session, payload, goTo }) {
+  const event = EVENTS[payload?.eventId] ?? EVENTS.hallwayShadow;
   let node = null;
   let hud = null;
   let dialog = null;
@@ -28,26 +34,26 @@ export function createBattleScene({ root, session, goTo }) {
   function mount() {
     node = document.createElement("section");
     node.className = "scene battle-scene";
-    node.setAttribute("aria-label", EVENT.title);
+    node.setAttribute("aria-label", event.title);
     root.appendChild(node);
 
     hud = createHud({ root: node, stats: session.stats });
     dialog = createDialogBox({ root: node });
-    dialog.show(EVENT.intro[introIndex]);
+    dialog.show(event.intro[introIndex]);
     setNodeClick(advanceIntro);
   }
 
   function advanceIntro() {
     introIndex += 1;
-    if (introIndex < EVENT.intro.length) {
-      dialog.show(EVENT.intro[introIndex]);
+    if (introIndex < event.intro.length) {
+      dialog.show(event.intro[introIndex]);
       return;
     }
 
     setNodeClick(null);
     dialog.destroy();
     dialog = null;
-    choicePanel = createChoicePanel({ root: node, choices: EVENT.choices, onSelect: handleChoice });
+    choicePanel = createChoicePanel({ root: node, choices: event.choices, onSelect: handleChoice });
   }
 
   async function handleChoice(choice) {
@@ -62,6 +68,7 @@ export function createBattleScene({ root, session, goTo }) {
 
     applyHpDelta(session.stats, outcome.hpDelta ?? 0);
     applyCringeDelta(session.stats, outcome.cringeDelta ?? 0);
+    advanceTime(session.stats, outcome.minutesDelta ?? 0);
     hud.update(session.stats);
 
     dialog = createDialogBox({ root: node });
@@ -71,7 +78,7 @@ export function createBattleScene({ root, session, goTo }) {
 
   function finishBattle() {
     setNodeClick(null);
-    if (isHpDepleted(session.stats) || isCringeMaxed(session.stats)) {
+    if (isHpDepleted(session.stats) || isCringeMaxed(session.stats) || isTimeUp(session.stats)) {
       goTo("ending");
     } else {
       goTo("exploration");

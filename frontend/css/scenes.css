@@ -218,17 +218,59 @@
   color: #fff;
 }
 
-/* Generic placeholder scenes (ending stub) */
-.placeholder-scene {
+/* Ending scene */
+.ending-scene {
   display: grid;
   place-items: center;
-  gap: 18px;
   background: var(--page-background);
-  color: var(--message-text);
-  text-align: center;
 }
 
-.placeholder-scene__button {
+.result-screen {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 40px 48px;
+  text-align: center;
+  color: var(--message-text);
+}
+
+.result-screen__type {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: #ff5a3c;
+}
+
+.result-screen__title {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 44px);
+}
+
+.result-screen__description {
+  max-width: 46ch;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+.result-screen__stats {
+  display: flex;
+  gap: 28px;
+  margin: 8px 0 0;
+}
+
+.result-screen__stats dt {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.result-screen__stats dd {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.result-screen__restart {
+  margin-top: 12px;
   padding: 10px 24px;
   border: 2px solid var(--control-border);
   border-radius: 10px;

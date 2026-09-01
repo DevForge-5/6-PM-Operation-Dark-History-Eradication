@@ -1,9 +1,14 @@
 import { GAME_CONFIG } from "../js/config.js";
 import { getCameraPosition, moveWithAxisCollisions } from "../js/game/game-controller.js";
 import {
+  advanceTime,
+  applyCringeDelta,
+  applyHpDelta,
   clearInput,
   createGameState,
+  createStats,
   getMovementVector,
+  isTimeUp,
   setDirection,
 } from "../js/game/game-state.js";
 
@@ -26,7 +31,7 @@ function nearlyEqual(actual, expected, tolerance = 0.0001) {
 test("초기 좌표가 설정값과 같다", () => {
   const state = createGameState(GAME_CONFIG);
   assert(state.player.x === 1536 && state.player.y === 192, "주인공 초기 좌표가 다릅니다.");
-  assert(state.monster.enabled === false, "괴물이 비활성화되지 않았습니다.");
+  assert(state.monster.enabled === true, "괴물이 활성화되지 않았습니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {
@@ -91,6 +96,26 @@ test("카메라가 브라우저 화면 크기를 기준으로 계산된다", () 
   const state = createGameState(GAME_CONFIG);
   const camera = getCameraPosition(state.player, GAME_CONFIG, { width: 1280, height: 800 });
   assert(camera.x === 928 && camera.y === 0, "브라우저 크기가 카메라에 반영되지 않았습니다.");
+});
+
+test("스탯 초기값이 설정값과 같다", () => {
+  const state = createGameState(GAME_CONFIG);
+  assert(state.stats.timeMinutes === 17 * 60, "시작 시각이 17:00이 아닙니다.");
+  assert(state.stats.hp === state.stats.hpMax, "HP 초기값이 최대치가 아닙니다.");
+  assert(state.stats.cringe === 0, "Cringe 초기값이 0이 아닙니다.");
+});
+
+test("HP/Cringe는 0~최대치 범위로 clamp된다", () => {
+  const stats = createStats(GAME_CONFIG);
+  assert(applyHpDelta(stats, -9999) === 0, "HP가 0 밑으로 내려가지 않아야 합니다.");
+  assert(applyCringeDelta(stats, 9999) === stats.cringeMax, "Cringe가 최대치를 넘지 않아야 합니다.");
+});
+
+test("시간은 마감 시각을 넘지 않고 isTimeUp이 true가 된다", () => {
+  const stats = createStats(GAME_CONFIG);
+  advanceTime(stats, 9999);
+  assert(stats.timeMinutes === stats.limitMinutes, "시간이 마감 시각에서 멈추지 않았습니다.");
+  assert(isTimeUp(stats), "마감 시각 도달이 감지되지 않았습니다.");
 });
 
 const results = document.querySelector("#results");
