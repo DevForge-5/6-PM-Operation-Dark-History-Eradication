@@ -81,9 +81,25 @@ export function createBattleScene({ root, session, payload, goTo }) {
     session.clearedEvents.add(event.id);
     hud.update(session.stats);
 
+    if ((outcome.cringeDelta ?? 0) > 0) {
+      triggerCringeFeedback();
+    }
+
     dialog = createDialogBox({ root: node });
     dialog.show(outcome.resultText);
     setNodeClick(finishBattle);
+  }
+
+  function triggerCringeFeedback() {
+    node.classList.remove("screen-shake");
+    // eslint-disable-next-line no-unused-expressions
+    node.offsetWidth; // force reflow so the animation restarts if it was already running
+    node.classList.add("screen-shake");
+
+    const flash = document.createElement("div");
+    flash.className = "cringe-flash";
+    node.appendChild(flash);
+    flash.addEventListener("animationend", () => flash.remove(), { once: true });
   }
 
   function finishBattle() {
