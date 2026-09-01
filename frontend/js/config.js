@@ -14,7 +14,12 @@ export const GAME_CONFIG = Object.freeze({
   }),
   assets: Object.freeze({
     map: "./assets/images/map-base.png",
-    player: "./assets/images/player-front.png",
+    player: Object.freeze({
+      down: "./assets/images/player-front.png",
+      up: "./assets/images/player-back.png",
+      left: "./assets/images/player-left.png",
+      right: "./assets/images/player-right.png",
+    }),
     monster: "./assets/images/shadow-monster.png",
   }),
   player: Object.freeze({
@@ -28,12 +33,18 @@ export const GAME_CONFIG = Object.freeze({
     collisionBottom: 4,
   }),
   monster: Object.freeze({
-    enabled: false,
+    enabled: true,
     x: 2176,
     y: 128,
     size: 128,
     collisionInsetX: 24,
     collisionTop: 24,
     collisionBottom: 10,
+  }),
+  stats: Object.freeze({
+    startMinutes: 17 * 60,
+    limitMinutes: 18 * 60,
+    hpMax: 100,
+    cringeMax: 100,
   }),
 });

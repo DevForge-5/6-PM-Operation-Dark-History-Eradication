@@ -1,0 +1,239 @@
+.scene-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+}
+
+/* Title scene */
+.title-scene {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 28px;
+  padding: 12vh 8vw;
+  background:
+    radial-gradient(circle at 70% 30%, #3a2312 0%, transparent 55%),
+    var(--page-background);
+  color: var(--message-text);
+}
+
+.title-scene__heading {
+  display: grid;
+  gap: 6px;
+}
+
+.title-scene__eyebrow {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: #ffb199;
+}
+
+.title-scene__logo {
+  margin: 0;
+  font-size: clamp(40px, 9vw, 96px);
+  line-height: 1;
+  color: #ff5a3c;
+  text-shadow: 0 0 18px rgb(255 90 60 / 55%);
+}
+
+.title-scene__menu {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.title-scene__menu-button {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-size: 20px;
+  letter-spacing: 0.05em;
+  color: var(--message-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.title-scene__menu-button:hover,
+.title-scene__menu-button:focus-visible {
+  color: #ff5a3c;
+  outline: none;
+}
+
+/* Story scene */
+.story-scene {
+  background: var(--page-background);
+  color: var(--message-text);
+}
+
+/* Battle scene */
+.battle-scene {
+  background: #0d0d0d;
+}
+
+/* Dialog box (story intro, battle lines) */
+.dialog-box {
+  position: absolute;
+  left: 6vw;
+  right: 6vw;
+  bottom: 8vh;
+  min-height: 80px;
+  padding: 20px 24px 32px;
+  background: rgb(20 16 10 / 92%);
+  border: 2px solid #a9895c;
+  border-radius: 8px;
+  color: #f5e6c8;
+  font-size: 17px;
+  line-height: 1.6;
+  white-space: pre-line;
+  cursor: pointer;
+}
+
+.dialog-box::after {
+  content: "▶ 클릭하여 계속";
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Choice panel */
+.choice-panel {
+  position: absolute;
+  left: 6vw;
+  right: 6vw;
+  bottom: 8vh;
+  display: grid;
+  gap: 10px;
+}
+
+.choice-panel__button {
+  padding: 14px 18px;
+  border: 2px solid var(--control-border);
+  border-radius: 8px;
+  background: rgb(20 16 10 / 92%);
+  color: var(--control-text);
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.choice-panel__button:hover,
+.choice-panel__button:focus-visible {
+  background: rgb(91 126 28 / 60%);
+  outline: none;
+}
+
+/* HUD */
+.hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 2;
+  color: var(--message-text);
+}
+
+.hud__stat {
+  display: grid;
+  gap: 4px;
+  width: 200px;
+}
+
+.hud__label {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.hud__bar {
+  height: 10px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 12%);
+  overflow: hidden;
+}
+
+.hud__bar-fill {
+  height: 100%;
+  transition: width 120ms ease-out;
+}
+
+.hud__bar-fill--hp {
+  background: #ff4d4d;
+}
+
+.hud__bar-fill--cringe {
+  background: #b06bff;
+}
+
+.hud__clock {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* QTE minigame overlay */
+.qte-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  background: rgb(60 0 0 / 55%);
+  z-index: 3;
+}
+
+.qte-overlay__prompt {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.qte-overlay__bar {
+  width: 280px;
+  height: 14px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 20%);
+  overflow: hidden;
+}
+
+.qte-overlay__bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #ffcf40;
+}
+
+.qte-overlay__count {
+  font-size: 18px;
+  color: #fff;
+}
+
+/* Generic placeholder scenes (ending stub) */
+.placeholder-scene {
+  display: grid;
+  place-items: center;
+  gap: 18px;
+  background: var(--page-background);
+  color: var(--message-text);
+  text-align: center;
+}
+
+.placeholder-scene__button {
+  padding: 10px 24px;
+  border: 2px solid var(--control-border);
+  border-radius: 10px;
+  background: var(--control-background);
+  color: var(--control-text);
+  font-size: 16px;
+  cursor: pointer;
+}

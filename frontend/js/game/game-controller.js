@@ -1,4 +1,4 @@
-import { clearInput, createGameState, getMovementVector, setDirection } from "./game-state.js";
+import { clearInput, createGameState, getFacingDirection, getMovementVector, setDirection } from "./game-state.js";
 
 const KEY_DIRECTIONS = Object.freeze({
   ArrowUp: "up",
@@ -64,7 +64,7 @@ function loadImage(source) {
 }
 
 export class GameController {
-  constructor({ canvas, controls, loadingMessage, assetError, config }) {
+  constructor({ canvas, controls, loadingMessage, assetError, config, stats, onFrame, onEncounterMonster }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
     this.controls = [...controls];
@@ -72,6 +72,12 @@ export class GameController {
     this.assetError = assetError;
     this.config = config;
     this.state = createGameState(config);
+    if (stats) {
+      this.state.stats = stats;
+    }
+    this.onFrame = onFrame;
+    this.onEncounterMonster = onEncounterMonster;
+    this.monsterEncountered = false;
     this.viewport = { ...config.canvas };
     this.images = null;
     this.mapPixels = null;
@@ -98,13 +104,20 @@ export class GameController {
     this.bindEvents();
 
     try {
-      const [map, player, monster] = await Promise.all([
+      const [map, playerDown, playerUp, playerLeft, playerRight, monster] = await Promise.all([
         loadImage(this.config.assets.map),
-        loadImage(this.config.assets.player),
+        loadImage(this.config.assets.player.down),
+        loadImage(this.config.assets.player.up),
+        loadImage(this.config.assets.player.left),
+        loadImage(this.config.assets.player.right),
         loadImage(this.config.assets.monster),
       ]);
 
-      this.images = { map, player, monster };
+      this.images = {
+        map,
+        monster,
+        player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
+      };
       this.prepareMapCollision();
       this.loadingMessage.hidden = true;
       this.state.isRunning = true;
@@ -132,6 +145,21 @@ export class GameController {
       button.addEventListener("lostpointercapture", (event) => this.releasePointer(event.pointerId));
       button.addEventListener("contextmenu", (event) => event.preventDefault());
     }
+  }
+
+  destroy() {
+    this.state.isRunning = false;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
+    window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("keyup", this.handleKeyUp);
+    window.removeEventListener("blur", this.handleBlur);
+    window.removeEventListener("resize", this.handleResize);
+    window.removeEventListener("orientationchange", this.handleOrientationChange);
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
   }
 
   handleKeyDown(event) {
@@ -295,10 +323,18 @@ export class GameController {
       return false;
     }
 
-    return (
-      !this.state.monster.enabled
-      || !rectanglesOverlap(this.getPlayerCollisionBox(x, y), this.getMonsterCollisionBox())
-    );
+    if (
+      this.state.monster.enabled
+      && rectanglesOverlap(this.getPlayerCollisionBox(x, y), this.getMonsterCollisionBox())
+    ) {
+      if (!this.monsterEncountered) {
+        this.monsterEncountered = true;
+        this.onEncounterMonster?.();
+      }
+      return false;
+    }
+
+    return true;
   }
 
   update(deltaSeconds) {
@@ -312,6 +348,7 @@ export class GameController {
     );
     this.state.player.x = nextPosition.x;
     this.state.player.y = nextPosition.y;
+    this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
   }
 
   render() {
@@ -335,7 +372,7 @@ export class GameController {
       );
     }
     this.context.drawImage(
-      this.images.player,
+      this.images.player[player.facing],
       player.x - camera.x,
       player.y - camera.y,
       player.size,
@@ -363,7 +400,12 @@ export class GameController {
     );
     this.previousTimestamp = timestamp;
     this.update(elapsedSeconds);
+    if (!this.state.isRunning) {
+      return;
+    }
+
     this.render();
+    this.onFrame?.(this.state);
     this.animationFrameId = requestAnimationFrame(this.tick);
   }
 }

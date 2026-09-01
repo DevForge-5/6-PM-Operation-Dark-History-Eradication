@@ -10,35 +10,40 @@
     <link rel="stylesheet" href="./css/variables.css">
     <link rel="stylesheet" href="./css/global.css">
     <link rel="stylesheet" href="./css/responsive.css">
+    <link rel="stylesheet" href="./css/scenes.css">
   </head>
   <body>
-    <main class="game-shell" aria-label="6PM 이동 테스트">
-      <section class="game-stage" aria-label="게임 화면">
-        <canvas
-          id="game-canvas"
-          width="1024"
-          height="576"
-          tabindex="0"
-          aria-label="주인공 이동 화면. 키보드에서는 WASD 또는 방향키를 사용하세요."
-        ></canvas>
+    <div id="scene-root" class="scene-root"></div>
 
-        <div class="mobile-controls" aria-label="모바일 이동 조작">
-          <button class="direction-button direction-button--up" type="button" data-direction="up" aria-label="위로 이동">▲</button>
-          <button class="direction-button direction-button--left" type="button" data-direction="left" aria-label="왼쪽으로 이동">◀</button>
-          <button class="direction-button direction-button--down" type="button" data-direction="down" aria-label="아래로 이동">▼</button>
-          <button class="direction-button direction-button--right" type="button" data-direction="right" aria-label="오른쪽으로 이동">▶</button>
-        </div>
+    <template id="exploration-scene-template">
+      <main class="game-shell" aria-label="6PM 이동 테스트">
+        <section class="game-stage" aria-label="게임 화면">
+          <canvas
+            id="game-canvas"
+            width="1024"
+            height="576"
+            tabindex="0"
+            aria-label="주인공 이동 화면. 키보드에서는 WASD 또는 방향키를 사용하세요."
+          ></canvas>
 
-        <div id="loading-message" class="screen-message" role="status" aria-live="polite">
-          <p>작전 구역 불러오는 중…</p>
-        </div>
+          <div class="mobile-controls" aria-label="모바일 이동 조작">
+            <button class="direction-button direction-button--up" type="button" data-direction="up" aria-label="위로 이동">▲</button>
+            <button class="direction-button direction-button--left" type="button" data-direction="left" aria-label="왼쪽으로 이동">◀</button>
+            <button class="direction-button direction-button--down" type="button" data-direction="down" aria-label="아래로 이동">▼</button>
+            <button class="direction-button direction-button--right" type="button" data-direction="right" aria-label="오른쪽으로 이동">▶</button>
+          </div>
 
-        <div id="asset-error" class="screen-message screen-message--error" role="alert" hidden>
-          <p>게임 자산을 불러오지 못했습니다.</p>
-          <p>페이지를 새로고침해 주세요.</p>
-        </div>
-      </section>
-    </main>
+          <div id="loading-message" class="screen-message" role="status" aria-live="polite">
+            <p>작전 구역 불러오는 중…</p>
+          </div>
+
+          <div id="asset-error" class="screen-message screen-message--error" role="alert" hidden>
+            <p>게임 자산을 불러오지 못했습니다.</p>
+            <p>페이지를 새로고침해 주세요.</p>
+          </div>
+        </section>
+      </main>
+    </template>
 
     <aside class="rotate-notice" role="status" aria-label="화면 회전 안내">
       <span class="rotate-notice__icon" aria-hidden="true">↻</span>
