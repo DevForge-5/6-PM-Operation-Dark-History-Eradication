@@ -54,6 +54,46 @@ export function getCameraPosition(player, config, viewport = config.canvas) {
   };
 }
 
+export function createWalkableTileMap(mapPixels, width, height, collision) {
+  const { tileSize, minimumFloorGreen, minimumFloorCoverage } = collision;
+  const columns = Math.ceil(width / tileSize);
+  const rows = Math.ceil(height / tileSize);
+  const data = new Uint8Array(columns * rows);
+
+  for (let tileY = 0; tileY < rows; tileY += 1) {
+    for (let tileX = 0; tileX < columns; tileX += 1) {
+      const startX = tileX * tileSize;
+      const startY = tileY * tileSize;
+      const endX = Math.min(startX + tileSize, width);
+      const endY = Math.min(startY + tileSize, height);
+      let floorPixels = 0;
+
+      for (let y = startY; y < endY; y += 1) {
+        for (let x = startX; x < endX; x += 1) {
+          const index = (y * width + x) * 4;
+          const red = mapPixels[index];
+          const green = mapPixels[index + 1];
+          const blue = mapPixels[index + 2];
+          const alpha = mapPixels[index + 3];
+          if (
+            alpha > 32
+            && green >= minimumFloorGreen
+            && green > red * 1.12
+            && green > blue * 1.18
+          ) {
+            floorPixels += 1;
+          }
+        }
+      }
+
+      const pixelCount = (endX - startX) * (endY - startY);
+      data[tileY * columns + tileX] = Number(floorPixels / pixelCount >= minimumFloorCoverage);
+    }
+  }
+
+  return { columns, rows, data };
+}
+
 function loadImage(source) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -110,7 +150,7 @@ export class GameController {
     this.goalReached = false;
     this.viewport = { ...config.canvas };
     this.images = null;
-    this.mapPixels = null;
+    this.walkableTiles = null;
     this.animationFrameId = null;
     this.previousTimestamp = null;
     this.pointerDirections = new Map();
@@ -136,8 +176,9 @@ export class GameController {
     this.bindEvents();
 
     try {
-      const [map, playerDown, playerUp, playerLeft, playerRight, monster] = await Promise.all([
+      const [map, collisionMap, playerDown, playerUp, playerLeft, playerRight, monster] = await Promise.all([
         loadImage(this.config.assets.map),
+        loadImage(this.config.assets.collisionMap),
         loadImage(this.config.assets.player.down),
         loadImage(this.config.assets.player.up),
         loadImage(this.config.assets.player.left),
@@ -147,6 +188,7 @@ export class GameController {
 
       this.images = {
         map,
+        collisionMap,
         monster,
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
@@ -289,8 +331,14 @@ export class GameController {
     const collisionContext = collisionCanvas.getContext("2d", { willReadFrequently: true });
     collisionContext.imageSmoothingEnabled = false;
     collisionContext.clearRect(0, 0, collisionCanvas.width, collisionCanvas.height);
-    collisionContext.drawImage(this.images.map, 0, 0);
-    this.mapPixels = collisionContext.getImageData(0, 0, collisionCanvas.width, collisionCanvas.height).data;
+    collisionContext.drawImage(this.images.collisionMap, 0, 0);
+    const mapPixels = collisionContext.getImageData(0, 0, collisionCanvas.width, collisionCanvas.height).data;
+    this.walkableTiles = createWalkableTileMap(
+      mapPixels,
+      this.config.world.width,
+      this.config.world.height,
+      this.config.collision,
+    );
   }
 
   isWalkablePixel(x, y) {
@@ -300,17 +348,10 @@ export class GameController {
       return false;
     }
 
-    const index = (pixelY * this.config.world.width + pixelX) * 4;
-    const red = this.mapPixels[index];
-    const green = this.mapPixels[index + 1];
-    const blue = this.mapPixels[index + 2];
-    const alpha = this.mapPixels[index + 3];
-    return (
-      alpha > 32
-      && green >= this.config.collision.minimumGreen
-      && green > red * 1.12
-      && green > blue * 1.18
-    );
+    const tileSize = this.config.collision.tileSize;
+    const tileX = Math.floor(pixelX / tileSize);
+    const tileY = Math.floor(pixelY / tileSize);
+    return this.walkableTiles.data[tileY * this.walkableTiles.columns + tileX] === 1;
   }
 
   getPlayerCollisionBox(x, y) {
@@ -438,7 +479,18 @@ export class GameController {
 
     this.context.fillStyle = "#ffffff";
     this.context.fillRect(0, 0, width, height);
-    this.context.drawImage(this.images.map, camera.x, camera.y, mapWidth, mapHeight, 0, 0, mapWidth, mapHeight);
+    const mapCrop = this.config.mapCrop;
+    this.context.drawImage(
+      this.images.map,
+      mapCrop.x + camera.x,
+      mapCrop.y + camera.y,
+      mapWidth,
+      mapHeight,
+      0,
+      0,
+      mapWidth,
+      mapHeight,
+    );
 
     if (this.config.goal) {
       const goal = this.config.goal;
