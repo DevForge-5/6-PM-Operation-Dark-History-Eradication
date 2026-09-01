@@ -22,8 +22,10 @@ export function createExplorationScene({ root, config, session, goTo }) {
       assetError: node.querySelector("#asset-error"),
       config,
       stats: session.stats,
+      clearedEventIds: session.clearedEvents,
       onFrame: () => hud.update(session.stats),
-      onEncounterMonster: () => goTo("battle", { eventId: "hallwayShadow" }),
+      onEncounter: (eventId) => goTo("battle", { eventId }),
+      onReachGoal: () => goTo("ending"),
     });
     controller.start();
   }

@@ -28,4 +28,33 @@ export const EVENTS = Object.freeze({
       },
     ],
   },
+  musicRoomSiren: {
+    id: "musicRoomSiren",
+    title: "새벽 2시 감성 싸이월드 세이렌",
+    intro: [
+      "음악실 스피커에서 낮은 하울링이 새어 나온다.",
+      "『...도토리를 건네주지 않으면, 그 시절 미니홈피를 재생하겠어.』",
+    ],
+    choices: [
+      {
+        id: "destroy",
+        label: "[파괴] 앰프에 빗자루 꽂기",
+        type: "instant",
+        effect: { cringeDelta: -15, hpDelta: -5, minutesDelta: 8, resultText: "앰프가 스파크를 튀기며 조용해졌다. 손이 조금 저리다." },
+      },
+      {
+        id: "persuade",
+        label: "[설득] 남의 글이라고 우기기",
+        type: "instant",
+        effect: { cringeDelta: 10, minutesDelta: 6, resultText: "『...본인 아이디로 로그인해놓고 무슨 소리야.』 안 먹혔다." },
+      },
+      {
+        id: "qte",
+        label: "[QTE] 박자에 맞춰 Mute 파장 쏘기",
+        type: "qte",
+        onSuccess: { cringeDelta: -15, minutesDelta: 5, resultText: "박자에 맞춰 정확히 뮤트시켰다!" },
+        onFail: { cringeDelta: 20, minutesDelta: 5, resultText: "박자를 놓쳐 하울링을 그대로 들었다..." },
+      },
+    ],
+  },
 });

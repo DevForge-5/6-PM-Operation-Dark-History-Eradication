@@ -31,7 +31,7 @@ function nearlyEqual(actual, expected, tolerance = 0.0001) {
 test("초기 좌표가 설정값과 같다", () => {
   const state = createGameState(GAME_CONFIG);
   assert(state.player.x === 1536 && state.player.y === 192, "주인공 초기 좌표가 다릅니다.");
-  assert(state.monster.enabled === true, "괴물이 활성화되지 않았습니다.");
+  assert(state.encounters.length > 0 && state.encounters.every((e) => e.enabled), "조우 지점이 모두 활성화되어 있어야 합니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {

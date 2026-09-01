@@ -18,7 +18,7 @@ class SceneManager {
   constructor({ root, config }) {
     this.root = root;
     this.config = config;
-    this.session = { stats: createStats(config) };
+    this.session = { stats: createStats(config), clearedEvents: new Set() };
     this.currentScene = null;
   }
 
@@ -30,6 +30,7 @@ class SceneManager {
 
     if (name === "story") {
       this.session.stats = createStats(this.config);
+      this.session.clearedEvents = new Set();
     }
 
     this.currentScene?.unmount();

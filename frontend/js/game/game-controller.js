@@ -64,7 +64,18 @@ function loadImage(source) {
 }
 
 export class GameController {
-  constructor({ canvas, controls, loadingMessage, assetError, config, stats, onFrame, onEncounterMonster }) {
+  constructor({
+    canvas,
+    controls,
+    loadingMessage,
+    assetError,
+    config,
+    stats,
+    clearedEventIds,
+    onFrame,
+    onEncounter,
+    onReachGoal,
+  }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
     this.controls = [...controls];
@@ -75,9 +86,18 @@ export class GameController {
     if (stats) {
       this.state.stats = stats;
     }
+    if (clearedEventIds) {
+      for (const encounter of this.state.encounters) {
+        if (clearedEventIds.has(encounter.eventId)) {
+          encounter.enabled = false;
+        }
+      }
+    }
     this.onFrame = onFrame;
-    this.onEncounterMonster = onEncounterMonster;
-    this.monsterEncountered = false;
+    this.onEncounter = onEncounter;
+    this.onReachGoal = onReachGoal;
+    this.triggeredEncounterId = null;
+    this.goalReached = false;
     this.viewport = { ...config.canvas };
     this.images = null;
     this.mapPixels = null;
@@ -291,14 +311,18 @@ export class GameController {
     };
   }
 
-  getMonsterCollisionBox() {
-    const monster = this.config.monster;
+  getEncounterCollisionBox(encounter) {
     return {
-      x: monster.x + monster.collisionInsetX,
-      y: monster.y + monster.collisionTop,
-      width: monster.size - monster.collisionInsetX * 2,
-      height: monster.size - monster.collisionTop - monster.collisionBottom,
+      x: encounter.x + encounter.collisionInsetX,
+      y: encounter.y + encounter.collisionTop,
+      width: encounter.size - encounter.collisionInsetX * 2,
+      height: encounter.size - encounter.collisionTop - encounter.collisionBottom,
     };
+  }
+
+  getGoalBox() {
+    const goal = this.config.goal;
+    return { x: goal.x, y: goal.y, width: goal.size, height: goal.size };
   }
 
   canPlayerOccupy(x, y) {
@@ -323,15 +347,19 @@ export class GameController {
       return false;
     }
 
-    if (
-      this.state.monster.enabled
-      && rectanglesOverlap(this.getPlayerCollisionBox(x, y), this.getMonsterCollisionBox())
-    ) {
-      if (!this.monsterEncountered) {
-        this.monsterEncountered = true;
-        this.onEncounterMonster?.();
+    const playerBox = this.getPlayerCollisionBox(x, y);
+    for (const encounter of this.state.encounters) {
+      if (!encounter.enabled) {
+        continue;
       }
-      return false;
+
+      if (rectanglesOverlap(playerBox, this.getEncounterCollisionBox(encounter))) {
+        if (!this.triggeredEncounterId) {
+          this.triggeredEncounterId = encounter.id;
+          this.onEncounter?.(encounter.eventId);
+        }
+        return false;
+      }
     }
 
     return true;
@@ -349,12 +377,19 @@ export class GameController {
     this.state.player.x = nextPosition.x;
     this.state.player.y = nextPosition.y;
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
+
+    if (!this.goalReached && this.config.goal) {
+      const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
+      if (rectanglesOverlap(playerBox, this.getGoalBox())) {
+        this.goalReached = true;
+        this.onReachGoal?.();
+      }
+    }
   }
 
   render() {
     const { width, height } = this.viewport;
     const player = this.state.player;
-    const monster = this.state.monster;
     const camera = getCameraPosition(player, this.config, this.viewport);
     const mapWidth = Math.min(width, this.config.world.width);
     const mapHeight = Math.min(height, this.config.world.height);
@@ -362,15 +397,30 @@ export class GameController {
     this.context.fillStyle = "#ffffff";
     this.context.fillRect(0, 0, width, height);
     this.context.drawImage(this.images.map, camera.x, camera.y, mapWidth, mapHeight, 0, 0, mapWidth, mapHeight);
-    if (monster.enabled) {
+
+    if (this.config.goal) {
+      const goal = this.config.goal;
+      this.context.fillStyle = "rgba(120, 220, 255, 0.35)";
+      this.context.fillRect(goal.x - camera.x, goal.y - camera.y, goal.size, goal.size);
+      this.context.strokeStyle = "#78dcff";
+      this.context.lineWidth = 2;
+      this.context.strokeRect(goal.x - camera.x, goal.y - camera.y, goal.size, goal.size);
+    }
+
+    for (const encounter of this.state.encounters) {
+      if (!encounter.enabled) {
+        continue;
+      }
+
       this.context.drawImage(
         this.images.monster,
-        monster.x - camera.x,
-        monster.y - camera.y,
-        monster.size,
-        monster.size,
+        encounter.x - camera.x,
+        encounter.y - camera.y,
+        encounter.size,
+        encounter.size,
       );
     }
+
     this.context.drawImage(
       this.images.player[player.facing],
       player.x - camera.x,

@@ -69,6 +69,7 @@ export function createBattleScene({ root, session, payload, goTo }) {
     applyHpDelta(session.stats, outcome.hpDelta ?? 0);
     applyCringeDelta(session.stats, outcome.cringeDelta ?? 0);
     advanceTime(session.stats, outcome.minutesDelta ?? 0);
+    session.clearedEvents.add(event.id);
     hud.update(session.stats);
 
     dialog = createDialogBox({ root: node });

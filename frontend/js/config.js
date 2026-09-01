@@ -32,14 +32,26 @@ export const GAME_CONFIG = Object.freeze({
     collisionTop: 32,
     collisionBottom: 4,
   }),
-  monster: Object.freeze({
-    enabled: true,
-    x: 2176,
-    y: 128,
-    size: 128,
-    collisionInsetX: 24,
-    collisionTop: 24,
-    collisionBottom: 10,
+  // NOTE: the current prototype map (map-base.png) only has a walkable
+  // corridor up to ~x2300 (there's a solid pillar right after that), so a
+  // second physical encounter doesn't fit here yet. musicRoomSiren's event
+  // data still exists in data/events.js for when a room extension is added.
+  encounters: Object.freeze([
+    Object.freeze({
+      id: "hallwayShadow",
+      eventId: "hallwayShadow",
+      x: 2176,
+      y: 128,
+      size: 128,
+      collisionInsetX: 24,
+      collisionTop: 24,
+      collisionBottom: 10,
+    }),
+  ]),
+  goal: Object.freeze({
+    x: 2230,
+    y: 195,
+    size: 60,
   }),
   stats: Object.freeze({
     startMinutes: 17 * 60,
