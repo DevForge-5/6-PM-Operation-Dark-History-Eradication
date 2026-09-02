@@ -46,52 +46,28 @@ export function moveWithAxisCollisions(position, deltaX, deltaY, canOccupy) {
 }
 
 export function getCameraPosition(player, config, viewport = config.canvas) {
-  const targetX = player.x + player.size / 2 - viewport.width / 2;
-  const targetY = player.y + player.size / 2 - viewport.height / 2;
+  const zoom = config.camera.zoom;
+  const visibleWidth = Math.min(viewport.width / zoom, config.world.width);
+  const visibleHeight = Math.min(viewport.height / zoom, config.world.height);
+  const targetX = player.x + player.size / 2 - visibleWidth / 2;
+  const targetY = player.y + player.size / 2 - visibleHeight / 2;
   return {
-    x: Math.max(0, Math.min(targetX, Math.max(0, config.world.width - viewport.width))),
-    y: Math.max(0, Math.min(targetY, Math.max(0, config.world.height - viewport.height))),
+    x: Math.max(0, Math.min(targetX, Math.max(0, config.world.width - visibleWidth))),
+    y: Math.max(0, Math.min(targetY, Math.max(0, config.world.height - visibleHeight))),
   };
 }
 
-export function createWalkableTileMap(mapPixels, width, height, collision) {
-  const { tileSize, minimumFloorGreen, minimumFloorCoverage } = collision;
-  const columns = Math.ceil(width / tileSize);
-  const rows = Math.ceil(height / tileSize);
-  const data = new Uint8Array(columns * rows);
-
-  for (let tileY = 0; tileY < rows; tileY += 1) {
-    for (let tileX = 0; tileX < columns; tileX += 1) {
-      const startX = tileX * tileSize;
-      const startY = tileY * tileSize;
-      const endX = Math.min(startX + tileSize, width);
-      const endY = Math.min(startY + tileSize, height);
-      let floorPixels = 0;
-
-      for (let y = startY; y < endY; y += 1) {
-        for (let x = startX; x < endX; x += 1) {
-          const index = (y * width + x) * 4;
-          const red = mapPixels[index];
-          const green = mapPixels[index + 1];
-          const blue = mapPixels[index + 2];
-          const alpha = mapPixels[index + 3];
-          if (
-            alpha > 32
-            && green >= minimumFloorGreen
-            && green > red * 1.12
-            && green > blue * 1.18
-          ) {
-            floorPixels += 1;
-          }
-        }
-      }
-
-      const pixelCount = (endX - startX) * (endY - startY);
-      data[tileY * columns + tileX] = Number(floorPixels / pixelCount >= minimumFloorCoverage);
-    }
+export function createWalkableTileMap(tileRows) {
+  const columns = tileRows[0]?.length ?? 0;
+  if (columns === 0 || tileRows.some((row) => row.length !== columns)) {
+    throw new Error("Invalid walkable tile map");
   }
 
-  return { columns, rows, data };
+  return {
+    columns,
+    rows: tileRows.length,
+    data: Uint8Array.from(tileRows.join(""), (tile) => Number(tile === "#")),
+  };
 }
 
 function loadImage(source) {
@@ -176,20 +152,24 @@ export class GameController {
     this.bindEvents();
 
     try {
-      const [map, collisionMap, playerDown, playerUp, playerLeft, playerRight, monster] = await Promise.all([
+      const [map, playerDown, playerUp, playerLeft, playerRight, monster, mimic, barrier, computer] = await Promise.all([
         loadImage(this.config.assets.map),
-        loadImage(this.config.assets.collisionMap),
         loadImage(this.config.assets.player.down),
         loadImage(this.config.assets.player.up),
         loadImage(this.config.assets.player.left),
         loadImage(this.config.assets.player.right),
         loadImage(this.config.assets.monster),
+        loadImage(this.config.assets.mimic),
+        loadImage(this.config.assets.barrier),
+        loadImage(this.config.assets.computer),
       ]);
 
       this.images = {
         map,
-        collisionMap,
         monster,
+        mimic,
+        barrier,
+        computer,
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
       this.prepareMapCollision();
@@ -324,21 +304,14 @@ export class GameController {
     }
   }
 
+  setPaused(isPaused) {
+    this.state.isPaused = isPaused;
+    this.clearAllInput();
+    this.previousTimestamp = null;
+  }
+
   prepareMapCollision() {
-    const collisionCanvas = document.createElement("canvas");
-    collisionCanvas.width = this.config.world.width;
-    collisionCanvas.height = this.config.world.height;
-    const collisionContext = collisionCanvas.getContext("2d", { willReadFrequently: true });
-    collisionContext.imageSmoothingEnabled = false;
-    collisionContext.clearRect(0, 0, collisionCanvas.width, collisionCanvas.height);
-    collisionContext.drawImage(this.images.collisionMap, 0, 0);
-    const mapPixels = collisionContext.getImageData(0, 0, collisionCanvas.width, collisionCanvas.height).data;
-    this.walkableTiles = createWalkableTileMap(
-      mapPixels,
-      this.config.world.width,
-      this.config.world.height,
-      this.config.collision,
-    );
+    this.walkableTiles = createWalkableTileMap(this.config.collision.walkableTiles);
   }
 
   isWalkablePixel(x, y) {
@@ -378,6 +351,10 @@ export class GameController {
     return { x: goal.x, y: goal.y, width: goal.size, height: goal.size };
   }
 
+  getBarrierCollisionBox() {
+    return this.config.barrier;
+  }
+
   canPlayerOccupy(x, y) {
     const player = this.config.player;
     if (
@@ -401,6 +378,10 @@ export class GameController {
     }
 
     const playerBox = this.getPlayerCollisionBox(x, y);
+    if (rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
+      return false;
+    }
+
     for (const encounter of this.state.encounters) {
       if (!encounter.enabled) {
         continue;
@@ -474,8 +455,12 @@ export class GameController {
     const { width, height } = this.viewport;
     const player = this.state.player;
     const camera = getCameraPosition(player, this.config, this.viewport);
-    const mapWidth = Math.min(width, this.config.world.width);
-    const mapHeight = Math.min(height, this.config.world.height);
+    const zoom = this.config.camera.zoom;
+    const mapWidth = Math.min(width / zoom, this.config.world.width);
+    const mapHeight = Math.min(height / zoom, this.config.world.height);
+    const toScreenX = (x) => (x - camera.x) * zoom;
+    const toScreenY = (y) => (y - camera.y) * zoom;
+    const toScreenSize = (size) => size * zoom;
 
     this.context.fillStyle = "#ffffff";
     this.context.fillRect(0, 0, width, height);
@@ -488,17 +473,17 @@ export class GameController {
       mapHeight,
       0,
       0,
-      mapWidth,
-      mapHeight,
+      width,
+      height,
     );
 
     if (this.config.goal) {
       const goal = this.config.goal;
       this.context.fillStyle = "rgba(120, 220, 255, 0.35)";
-      this.context.fillRect(goal.x - camera.x, goal.y - camera.y, goal.size, goal.size);
+      this.context.fillRect(toScreenX(goal.x), toScreenY(goal.y), toScreenSize(goal.size), toScreenSize(goal.size));
       this.context.strokeStyle = "#78dcff";
       this.context.lineWidth = 2;
-      this.context.strokeRect(goal.x - camera.x, goal.y - camera.y, goal.size, goal.size);
+      this.context.strokeRect(toScreenX(goal.x), toScreenY(goal.y), toScreenSize(goal.size), toScreenSize(goal.size));
     }
 
     for (const pickup of this.state.pickups) {
@@ -506,11 +491,11 @@ export class GameController {
         continue;
       }
 
-      const centerX = pickup.x - camera.x + pickup.size / 2;
-      const centerY = pickup.y - camera.y + pickup.size / 2;
+      const centerX = toScreenX(pickup.x + pickup.size / 2);
+      const centerY = toScreenY(pickup.y + pickup.size / 2);
       this.context.fillStyle = "#ffd76a";
       this.context.beginPath();
-      this.context.arc(centerX, centerY, pickup.size / 2, 0, Math.PI * 2);
+      this.context.arc(centerX, centerY, toScreenSize(pickup.size / 2), 0, Math.PI * 2);
       this.context.fill();
       this.context.strokeStyle = "#a9702a";
       this.context.lineWidth = 2;
@@ -524,12 +509,39 @@ export class GameController {
 
       this.context.drawImage(
         this.images.monster,
-        encounter.x - camera.x,
-        encounter.y - camera.y,
-        encounter.size,
-        encounter.size,
+        toScreenX(encounter.x),
+        toScreenY(encounter.y),
+        toScreenSize(encounter.size),
+        toScreenSize(encounter.size),
       );
     }
+
+    const mimic = this.config.mimic;
+    this.context.drawImage(
+      this.images.mimic,
+      toScreenX(mimic.x),
+      toScreenY(mimic.y),
+      toScreenSize(mimic.size),
+      toScreenSize(mimic.size),
+    );
+
+    const barrier = this.config.barrier;
+    this.context.drawImage(
+      this.images.barrier,
+      toScreenX(barrier.x),
+      toScreenY(barrier.y),
+      toScreenSize(barrier.width),
+      toScreenSize(barrier.height),
+    );
+
+    const computer = this.config.computer;
+    this.context.drawImage(
+      this.images.computer,
+      toScreenX(computer.x),
+      toScreenY(computer.y),
+      toScreenSize(computer.size),
+      toScreenSize(computer.size),
+    );
 
     const playerSprite = this.images.player[player.facing];
     const sourceSize = playerSprite.height;
@@ -539,10 +551,10 @@ export class GameController {
       0,
       sourceSize,
       sourceSize,
-      player.x - camera.x,
-      player.y - camera.y,
-      player.size,
-      player.size,
+      toScreenX(player.x),
+      toScreenY(player.y),
+      toScreenSize(player.size),
+      toScreenSize(player.size),
     );
 
     this.canvas.dataset.playerX = player.x.toFixed(2);
@@ -553,6 +565,11 @@ export class GameController {
 
   tick(timestamp) {
     if (!this.state.isRunning) {
+      return;
+    }
+
+    if (this.state.isPaused) {
+      this.animationFrameId = requestAnimationFrame(this.tick);
       return;
     }
 

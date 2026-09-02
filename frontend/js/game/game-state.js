@@ -48,6 +48,7 @@ export function createGameState(config) {
     stats: createStats(config),
     input: createInputState(),
     isRunning: false,
+    isPaused: false,
   };
 }
 

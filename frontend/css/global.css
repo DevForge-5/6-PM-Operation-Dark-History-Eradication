@@ -48,6 +48,30 @@ body {
   -webkit-user-select: none;
 }
 
+.mobile-pause-button {
+  display: none;
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 2px solid rgb(255 255 255 / 80%);
+  border-radius: 12px;
+  background: rgb(13 13 13 / 72%);
+  color: #fff;
+  font-family: "Press Start 2P", monospace;
+  font-size: 22px;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 3;
+}
+
+.mobile-pause-button:active {
+  transform: translateY(1px);
+}
+
 .direction-button {
   display: grid;
   place-items: center;

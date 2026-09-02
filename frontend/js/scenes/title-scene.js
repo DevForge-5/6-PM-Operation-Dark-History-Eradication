@@ -17,7 +17,7 @@ export function createTitleScene({ root, goTo }) {
       <ul class="title-scene__menu">
         <li><button type="button" class="title-scene__menu-button" data-action="start">START</button></li>
         <li><button type="button" class="title-scene__menu-button" data-action="option">OPTION</button></li>
-        <li><button type="button" class="title-scene__menu-button" data-action="exit">EXIT</button></li>
+        <li><button type="button" class="title-scene__menu-button" data-action="exit">LEADERBOARD</button></li>
       </ul>
     `;
     root.appendChild(node);

@@ -36,7 +36,6 @@ test("초기 좌표가 설정값과 같다", () => {
 
 test("새 맵 crop 크기가 게임 월드와 같다", () => {
   assert(GAME_CONFIG.assets.map.endsWith("/MapGrid.png"), "새 맵 이미지가 설정되지 않았습니다.");
-  assert(GAME_CONFIG.assets.collisionMap.endsWith("/map-base.png"), "벽 충돌 마스크가 설정되지 않았습니다.");
   assert(GAME_CONFIG.mapCrop.width === GAME_CONFIG.world.width, "맵 crop 너비가 월드와 다릅니다.");
   assert(GAME_CONFIG.mapCrop.height === GAME_CONFIG.world.height, "맵 crop 높이가 월드와 다릅니다.");
   assert(GAME_CONFIG.world.width % GAME_CONFIG.collision.tileSize === 0, "월드 너비가 충돌 타일에 맞지 않습니다.");
@@ -44,19 +43,9 @@ test("새 맵 crop 크기가 게임 월드와 같다", () => {
 });
 
 test("바닥 타일만 이동 가능하고 벽 타일은 차단된다", () => {
-  const pixels = new Uint8ClampedArray(4 * 2 * 4);
-  for (let y = 0; y < 2; y += 1) {
-    for (let x = 0; x < 4; x += 1) {
-      const index = (y * 4 + x) * 4;
-      const color = x < 2 ? [106, 143, 26, 255] : [156, 156, 156, 255];
-      pixels.set(color, index);
-    }
-  }
-
-  const collision = { tileSize: 2, minimumFloorGreen: 130, minimumFloorCoverage: 0.7 };
-  const tileMap = createWalkableTileMap(pixels, 4, 2, collision);
+  const tileMap = createWalkableTileMap(["##..", "##.."]);
   assert(tileMap.data[0] === 1, "바닥 타일이 이동 불가로 판정됐습니다.");
-  assert(tileMap.data[1] === 0, "벽 타일이 이동 가능으로 판정됐습니다.");
+  assert(tileMap.data[2] === 0, "벽 타일이 이동 가능으로 판정됐습니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {
@@ -108,19 +97,19 @@ test("얇은 벽도 한 프레임에 건너뛰지 않는다", () => {
 test("카메라가 전체 맵 범위 안에서 주인공을 따라간다", () => {
   const state = createGameState(GAME_CONFIG);
   const camera = getCameraPosition(state.player, GAME_CONFIG);
-  assert(camera.x === 1056 && camera.y === 0, "초기 카메라 위치가 올바르지 않습니다.");
+  assert(camera.x === 1275.4285714285716 && camera.y === 59.428571428571416, "초기 카메라 위치가 올바르지 않습니다.");
 
   const edgeCamera = getCameraPosition(
     { x: GAME_CONFIG.world.width - 64, y: GAME_CONFIG.world.height - 64, size: 64 },
     GAME_CONFIG,
   );
-  assert(edgeCamera.x === 2496 && edgeCamera.y === 640, "카메라가 맵 경계를 벗어났습니다.");
+  assert(edgeCamera.x === 2934.857142857143 && edgeCamera.y === 886.8571428571429, "카메라가 맵 경계를 벗어났습니다.");
 });
 
 test("카메라가 브라우저 화면 크기를 기준으로 계산된다", () => {
   const state = createGameState(GAME_CONFIG);
   const camera = getCameraPosition(state.player, GAME_CONFIG, { width: 1280, height: 800 });
-  assert(camera.x === 928 && camera.y === 0, "브라우저 크기가 카메라에 반영되지 않았습니다.");
+  assert(camera.x === 1202.2857142857142 && camera.y === 0, "브라우저 크기가 카메라에 반영되지 않았습니다.");
 });
 
 test("스탯 초기값이 설정값과 같다", () => {

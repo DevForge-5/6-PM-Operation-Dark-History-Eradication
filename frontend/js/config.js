@@ -9,14 +9,35 @@ export const GAME_CONFIG = Object.freeze({
   }),
   movementSpeed: 192,
   maxDeltaSeconds: 0.05,
+  camera: Object.freeze({
+    zoom: 1.75,
+  }),
   collision: Object.freeze({
     tileSize: 64,
-    minimumFloorGreen: 130,
-    minimumFloorCoverage: 0.7,
+    walkableTiles: Object.freeze([
+      ".......................................................",
+      ".......................####............................",
+      ".......................#############.###########.......",
+      ".......................#############.###########.......",
+      ".......................####.......##.########.##.......",
+      "..................................##.########.##.......",
+      ".##############...................##.########.##.......",
+      ".##############...................###########.##.......",
+      ".##############...................###########.##.......",
+      ".##############...............................##.......",
+      ".##############.........................##############.",
+      ".##############..........#####..........##############.",
+      ".##############...####...#####...####...##############.",
+      ".#####################################################.",
+      ".#####################################################.",
+      ".##############...####...#####...####...##############.",
+      ".##############..........#####..........##############.",
+      ".##############.........................##############.",
+      ".......................................................",
+    ]),
   }),
   assets: Object.freeze({
     map: "./assets/images/MapGrid.png",
-    collisionMap: "./assets/images/map-base.png",
     player: Object.freeze({
       down: "./assets/images/playerAction/Front.png",
       up: "./assets/images/playerAction/Back.png",
@@ -24,6 +45,9 @@ export const GAME_CONFIG = Object.freeze({
       right: "./assets/images/playerAction/Right.png",
     }),
     monster: "./assets/images/shadow-monster.png",
+    mimic: "./assets/images/미믹 1.png",
+    barrier: "./assets/images/방벽 1.png",
+    computer: "./assets/images/컴퓨터 1.png",
   }),
   mapCrop: Object.freeze({
     x: 301,
@@ -43,10 +67,6 @@ export const GAME_CONFIG = Object.freeze({
     animationFrameCount: 4,
     animationFrameDuration: 0.14,
   }),
-  // NOTE: the current prototype map only has a walkable
-  // corridor up to ~x2300 (there's a solid pillar right after that), so a
-  // second physical encounter doesn't fit here yet. musicRoomSiren's event
-  // data still exists in data/events.js for when a room extension is added.
   encounters: Object.freeze([
     Object.freeze({
       id: "hallwayShadow",
@@ -59,6 +79,22 @@ export const GAME_CONFIG = Object.freeze({
       collisionBottom: 10,
     }),
   ]),
+  mimic: Object.freeze({
+    x: 1664,
+    y: 768,
+    size: 192,
+  }),
+  barrier: Object.freeze({
+    x: 2176,
+    y: 768,
+    width: 64,
+    height: 256,
+  }),
+  computer: Object.freeze({
+    x: 2304,
+    y: 768,
+    size: 64,
+  }),
   goal: Object.freeze({
     x: 2230,
     y: 195,

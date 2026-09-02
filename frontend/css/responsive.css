@@ -7,6 +7,10 @@
   .mobile-controls {
     display: grid;
   }
+
+  .mobile-pause-button {
+    display: grid;
+  }
 }
 
 @media (orientation: portrait) and (hover: none),
@@ -41,5 +45,14 @@
   .direction-button {
     border-radius: 12px;
     font-size: 18px;
+  }
+
+  .mobile-pause-button {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    font-size: 19px;
   }
 }

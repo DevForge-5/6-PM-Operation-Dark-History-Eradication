@@ -15,6 +15,20 @@ export function createExplorationScene({ root, config, session, goTo }) {
   let controller = null;
   let hud = null;
 
+  function setPaused(isPaused) {
+    controller.setPaused(isPaused);
+    node.querySelector("#pause-overlay").hidden = !isPaused;
+  }
+
+  function handlePauseKey(event) {
+    if (event.code !== "Escape") {
+      return;
+    }
+
+    event.preventDefault();
+    setPaused(!controller.state.isPaused);
+  }
+
   function mount() {
     const template = document.querySelector("#exploration-scene-template");
     node = template.content.firstElementChild.cloneNode(true);
@@ -41,10 +55,14 @@ export function createExplorationScene({ root, config, session, goTo }) {
         showPickupToast(stage, `${ITEMS[itemId]?.name ?? itemId} 획득!`);
       },
     });
+    node.querySelector("#resume-button").addEventListener("click", () => setPaused(false));
+    node.querySelector("#mobile-pause-button").addEventListener("click", () => setPaused(true));
+    window.addEventListener("keydown", handlePauseKey);
     controller.start();
   }
 
   function unmount() {
+    window.removeEventListener("keydown", handlePauseKey);
     controller?.destroy();
     controller = null;
     hud?.destroy();
