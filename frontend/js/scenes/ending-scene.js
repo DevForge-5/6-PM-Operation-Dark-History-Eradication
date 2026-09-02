@@ -11,11 +11,12 @@ export function createEndingScene({ root, session, goTo }) {
     node.setAttribute("aria-label", "엔딩 화면");
     root.appendChild(node);
 
-    const ending = resolveEnding(session.stats);
+    const ending = resolveEnding(session.stats, session.selectedEndingId);
     resultScreen = createResultScreen({
       root: node,
       ending,
       stats: session.stats,
+      clearTimeMs: session.clearTimeMs,
       onRestart: () => goTo("title"),
     });
   }

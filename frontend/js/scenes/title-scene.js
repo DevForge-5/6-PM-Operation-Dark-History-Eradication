@@ -1,6 +1,15 @@
+import { createOptionModal } from "../ui/option-modal.js";
+
 export function createTitleScene({ root, goTo }) {
   let node = null;
   let handleMenuClick = null;
+  let optionModal = null;
+
+  function closeOption() {
+    optionModal?.destroy();
+    optionModal = null;
+    node.querySelector("[data-action='option']")?.focus();
+  }
 
   function mount() {
     node = document.createElement("section");
@@ -30,12 +39,22 @@ export function createTitleScene({ root, goTo }) {
 
       if (button.dataset.action === "start") {
         goTo("story");
+      } else if (button.dataset.action === "option" && !optionModal) {
+        optionModal = createOptionModal({
+          root: node,
+          onClose: closeOption,
+          onRestart: () => goTo("story"),
+        });
+      } else if (button.dataset.action === "exit") {
+        goTo("leaderboard");
       }
     };
     node.addEventListener("click", handleMenuClick);
   }
 
   function unmount() {
+    optionModal?.destroy();
+    optionModal = null;
     node?.removeEventListener("click", handleMenuClick);
     node?.remove();
     node = null;

@@ -27,6 +27,24 @@ export const EVENTS = Object.freeze({
         type: "instant",
         effect: { cringeDelta: 15, hpDelta: 0, minutesDelta: 10, resultText: "『...나도 왼팔이 아파온다.』 그림자가 주춤한다." },
       },
+      {
+        id: "accept-history",
+        label: "[인정] 흑역사를 내 콘텐츠로 공개하기",
+        type: "instant",
+        effect: {
+          endingId: "ending4",
+          resultText: "숨기기를 포기하고 흑역사를 숏폼으로 공개했다. 반응이... 폭발적이다!",
+        },
+      },
+      {
+        id: "power-breaker",
+        label: "[지름길] 경비실 두꺼비집 내리기",
+        type: "instant",
+        effect: {
+          endingId: "ending5",
+          resultText: "두꺼비집을 내리자 학교의 모든 전원이 꺼졌다. 너무 간단하게 끝났다.",
+        },
+      },
     ],
   },
   musicRoomSiren: {

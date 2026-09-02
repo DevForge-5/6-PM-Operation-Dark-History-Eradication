@@ -1,10 +1,12 @@
 import { GAME_CONFIG } from "./config.js";
 import { createStats } from "./game/game-state.js";
+import { getClearTime, startGameTimer, stopGameTimer } from "./game/game-timer.js";
 import { createTitleScene } from "./scenes/title-scene.js";
 import { createStoryScene } from "./scenes/story-scene.js";
 import { createExplorationScene } from "./scenes/exploration-scene.js";
 import { createBattleScene } from "./scenes/battle-scene.js";
 import { createEndingScene } from "./scenes/ending-scene.js";
+import { createLeaderboardScene } from "./scenes/leaderboard-scene.js";
 
 const SCENE_FACTORIES = {
   title: createTitleScene,
@@ -12,13 +14,20 @@ const SCENE_FACTORIES = {
   exploration: createExplorationScene,
   battle: createBattleScene,
   ending: createEndingScene,
+  leaderboard: createLeaderboardScene,
 };
 
 class SceneManager {
   constructor({ root, config }) {
     this.root = root;
     this.config = config;
-    this.session = { stats: createStats(config), clearedEvents: new Set(), inventory: new Set() };
+    this.session = {
+      stats: createStats(config),
+      clearedEvents: new Set(),
+      inventory: new Set(),
+      selectedEndingId: null,
+      clearTimeMs: null,
+    };
     this.currentScene = null;
   }
 
@@ -32,6 +41,17 @@ class SceneManager {
       this.session.stats = createStats(this.config);
       this.session.clearedEvents = new Set();
       this.session.inventory = new Set();
+      this.session.selectedEndingId = null;
+      this.session.clearTimeMs = null;
+      startGameTimer();
+    }
+
+    if (name === "title") {
+      stopGameTimer();
+    }
+
+    if (name === "ending" && this.session.clearTimeMs === null) {
+      this.session.clearTimeMs = getClearTime();
     }
 
     this.currentScene?.unmount();
