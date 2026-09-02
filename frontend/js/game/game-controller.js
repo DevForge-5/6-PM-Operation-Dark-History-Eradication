@@ -158,7 +158,7 @@ export class GameController {
     this.bindEvents();
 
     try {
-      const [map, playerDown, playerUp, playerLeft, playerRight, monster, mimic, barrier, computer] = await Promise.all([
+      const [map, playerDown, playerUp, playerLeft, playerRight, monster, mimic, barrier, computer, earbuds] = await Promise.all([
         loadImage(this.config.assets.map),
         loadImage(this.config.assets.player.down),
         loadImage(this.config.assets.player.up),
@@ -168,6 +168,7 @@ export class GameController {
         loadImage(this.config.assets.mimic),
         loadImage(this.config.assets.barrier),
         loadImage(this.config.assets.computer),
+        loadImage(this.config.assets.earbuds),
       ]);
 
       this.images = {
@@ -176,6 +177,7 @@ export class GameController {
         mimic,
         barrier,
         computer,
+        earbuds,
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
       this.prepareMapCollision();
@@ -497,15 +499,13 @@ export class GameController {
         continue;
       }
 
-      const centerX = toScreenX(pickup.x + pickup.size / 2);
-      const centerY = toScreenY(pickup.y + pickup.size / 2);
-      this.context.fillStyle = "#ffd76a";
-      this.context.beginPath();
-      this.context.arc(centerX, centerY, toScreenSize(pickup.size / 2), 0, Math.PI * 2);
-      this.context.fill();
-      this.context.strokeStyle = "#a9702a";
-      this.context.lineWidth = 2;
-      this.context.stroke();
+      this.context.drawImage(
+        this.images.earbuds,
+        toScreenX(pickup.x),
+        toScreenY(pickup.y),
+        toScreenSize(pickup.size),
+        toScreenSize(pickup.size),
+      );
     }
 
     for (const encounter of this.state.encounters) {

@@ -11,6 +11,10 @@
   .mobile-pause-button {
     display: grid;
   }
+
+  .hud__stat {
+    width: clamp(260px, 40vw, 340px);
+  }
 }
 
 @media (orientation: portrait) and (hover: none),

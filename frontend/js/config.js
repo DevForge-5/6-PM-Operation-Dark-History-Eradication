@@ -48,6 +48,7 @@ export const GAME_CONFIG = Object.freeze({
     mimic: "./assets/images/미믹 1.png",
     barrier: "./assets/images/방벽 1.png",
     computer: "./assets/images/컴퓨터 1.png",
+    earbuds: "./assets/images/에어팟 1.png",
   }),
   mapCrop: Object.freeze({
     x: 301,
@@ -104,9 +105,9 @@ export const GAME_CONFIG = Object.freeze({
     Object.freeze({
       id: "earbudsPickup",
       itemId: "noiseCancelingEarbuds",
-      x: 1820,
-      y: 180,
-      size: 56,
+      x: 1824,
+      y: 184,
+      size: 48,
     }),
   ]),
   stats: Object.freeze({

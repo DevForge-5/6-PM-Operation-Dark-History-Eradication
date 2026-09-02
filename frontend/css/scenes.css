@@ -304,7 +304,7 @@
 .hud__stat {
   --empty-ratio: 0;
   position: relative;
-  width: clamp(240px, 38vw, 390px);
+  width: clamp(300px, 42vw, 520px);
   aspect-ratio: 4 / 1;
 }
 
@@ -329,7 +329,7 @@
 .hud__clock {
   padding: 8px 12px;
   font-family: "Press Start 2P", monospace;
-  font-size: clamp(14px, 2vw, 20px);
+  font-size: clamp(18px, 2.6vw, 28px);
   font-weight: 700;
   color: #fff;
   text-shadow: 2px 2px 0 #25130d;
