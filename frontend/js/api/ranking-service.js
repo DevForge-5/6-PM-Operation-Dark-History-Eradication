@@ -1,6 +1,10 @@
 import { fetchMockRanks, submitMockRank } from "./mock-rankings.js";
 
-const USE_MOCK = false;
+// TODO(backend): flip to false once the team is ready to develop against a
+// locally-running backend (or it's deployed) — real API wiring already
+// verified end to end, see docs/api-contract.md. Mock keeps frontend work
+// unblocked for anyone not running the Spring Boot app locally.
+const USE_MOCK = true;
 
 // Same-origin by default (works once frontend+backend share a domain, e.g.
 // behind a reverse proxy in deployment). For local dev where the frontend is
