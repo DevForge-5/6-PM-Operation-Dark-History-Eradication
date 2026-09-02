@@ -1,5 +1,11 @@
 import { GAME_CONFIG } from "../js/config.js";
-import { createWalkableTileMap, getCameraPosition, moveWithAxisCollisions } from "../js/game/game-controller.js";
+import {
+  GameController,
+  createWalkableTileMap,
+  getCameraPosition,
+  getPrincipalState,
+  moveWithAxisCollisions,
+} from "../js/game/game-controller.js";
 import {
   advanceTime,
   applyCringeDelta,
@@ -63,6 +69,77 @@ test("바닥 타일만 이동 가능하고 벽 타일은 차단된다", () => {
   const tileMap = createWalkableTileMap(["##..", "##.."]);
   assert(tileMap.data[0] === 1, "바닥 타일이 이동 불가로 판정됐습니다.");
   assert(tileMap.data[2] === 0, "벽 타일이 이동 가능으로 판정됐습니다.");
+});
+
+test("교장 상태가 앉아있음, 의심, 확인 순서로 전환된다", () => {
+  const timing = GAME_CONFIG.office.principalTiming;
+  assert(getPrincipalState(2.99, timing) === "seated", "3초 전에는 앉아있음 상태여야 합니다.");
+  assert(getPrincipalState(3, timing) === "suspicious", "3초 후에는 의심 상태여야 합니다.");
+  assert(getPrincipalState(4, timing) === "alert", "추가 1초 후에는 확인 상태여야 합니다.");
+  assert(getPrincipalState(5, timing) === "seated", "확인 후에는 다시 앉아있음 상태여야 합니다.");
+});
+
+test("교장 확인 상태에서도 소파 앞 세이프 존은 피해를 막는다", () => {
+  const stateChanges = [];
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    onPrincipalStateChange: (state) => stateChanges.push(state),
+  });
+  const safeZone = GAME_CONFIG.office.safeZone;
+  controller.state.player.x = safeZone.x;
+  controller.state.player.y = safeZone.y - GAME_CONFIG.player.size + GAME_CONFIG.player.footInsetY;
+  controller.updatePrincipal(GAME_CONFIG.office.revealDuration / 2);
+  assert(controller.officeRevealProgress > 0 && controller.officeRevealProgress < 1, "교무실 시야가 점진적으로 열리지 않습니다.");
+  controller.updatePrincipal(3 - GAME_CONFIG.office.revealDuration / 2);
+  controller.updatePrincipal(1);
+  assert(controller.principalState === "alert", "교장이 확인 상태로 전환되지 않았습니다.");
+  assert(stateChanges.join(",") === "suspicious,alert", "교장 상태 변경 알림 순서가 다릅니다.");
+  assert(controller.state.stats.hp === GAME_CONFIG.stats.hpMax, "세이프 존 안에서 HP가 감소했습니다.");
+
+  controller.state.player.x = GAME_CONFIG.office.bounds.x;
+  controller.state.player.y = GAME_CONFIG.office.bounds.y;
+  controller.updatePrincipal(0.1);
+  assert(controller.state.stats.hp < GAME_CONFIG.stats.hpMax, "세이프 존 밖에서 HP가 감소하지 않았습니다.");
+  controller.updatePrincipal(0.9);
+  assert(controller.principalState === "seated", "확인 후 교장이 다시 앉지 않았습니다.");
+  assert(stateChanges.join(",") === "suspicious,alert,seated", "교장 순환 상태 변경 알림 순서가 다릅니다.");
+
+  controller.state.player.x = GAME_CONFIG.office.bounds.x + GAME_CONFIG.office.bounds.width;
+  controller.updatePrincipal(GAME_CONFIG.office.revealDuration / 2);
+  assert(controller.officeRevealProgress > 0 && controller.officeRevealProgress < 1, "교무실을 나갈 때 암막이 점진적으로 돌아오지 않습니다.");
+  assert(controller.principalState === "seated", "교무실을 나가도 교장 상태가 초기화되지 않았습니다.");
+});
+
+test("HP가 0이 되면 피해 피드백과 사망 처리를 한 번만 호출한다", () => {
+  let damageCount = 0;
+  let deathCount = 0;
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    onDamage: () => {
+      damageCount += 1;
+    },
+    onPlayerDeath: () => {
+      deathCount += 1;
+    },
+  });
+  controller.state.isRunning = true;
+
+  controller.takeDamage(GAME_CONFIG.stats.hpMax);
+  controller.takeDamage(10);
+
+  assert(damageCount === 1, "실제 HP 감소 시 피해 피드백이 한 번 호출되어야 합니다.");
+  assert(deathCount === 1, "사망 처리는 한 번만 호출되어야 합니다.");
+  assert(controller.playerDefeated, "플레이어 사망 상태가 기록되지 않았습니다.");
+  assert(!controller.state.isRunning, "사망 후 게임 루프가 중지되지 않았습니다.");
+});
+
+test("낙하 꽃병은 계단 벽이 아닌 안쪽 두 열에서 출발한다", () => {
+  const sourceIndexes = GAME_CONFIG.office.vaseAttack.sourceVaseIndexes;
+  assert(sourceIndexes.join(",") === "1,2", "낙하 꽃병 위치가 계단 안쪽으로 설정되지 않았습니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {

@@ -92,6 +92,57 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       : "./assets/images/PausedIMG/speaker%201.png";
   }
 
+  function triggerDamageFeedback() {
+    const stage = node?.querySelector(".game-stage");
+    if (!stage) {
+      return;
+    }
+
+    stage.classList.remove("screen-shake");
+    stage.offsetWidth;
+    stage.classList.add("screen-shake");
+    const handleShakeEnd = (event) => {
+      if (event.target === stage && event.animationName === "screen-shake") {
+        stage.classList.remove("screen-shake");
+        stage.removeEventListener("animationend", handleShakeEnd);
+      }
+    };
+    stage.addEventListener("animationend", handleShakeEnd);
+
+    const damageOverlay = node.querySelector("#damage-flash-overlay");
+    if (damageOverlay) {
+      damageOverlay.classList.remove("is-visible");
+      damageOverlay.offsetWidth;
+      damageOverlay.classList.add("is-visible");
+      damageOverlay.addEventListener("animationend", () => {
+        damageOverlay.classList.remove("is-visible");
+      }, { once: true });
+    }
+  }
+
+  function showDeathScreen() {
+    setGameTimerPaused(true);
+    const deathOverlay = node?.querySelector("#death-overlay");
+    if (!deathOverlay) {
+      return;
+    }
+
+    deathOverlay.hidden = false;
+    deathOverlay.querySelector("#death-restart-button")?.focus();
+  }
+
+  function handlePrincipalStateChange(state) {
+    const stage = node?.querySelector(".game-stage");
+    if (!stage) {
+      return;
+    }
+
+    node.querySelector("#principal-danger-overlay")?.classList.toggle("is-visible", state !== "seated");
+    if (state === "suspicious") {
+      triggerDamageFeedback();
+    }
+  }
+
   function mount() {
     const template = document.querySelector("#exploration-scene-template");
     node = template.content.firstElementChild.cloneNode(true);
@@ -111,6 +162,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       playerPosition: payload?.player,
       clearedEventIds: session.clearedEvents,
       collectedItemIds: session.collectedPickups,
+      defeatedEncounterId: payload?.defeatedEncounterId,
       onFrame: () => hud.update(session.stats),
       onEncounter: (eventId) => {
         const { x, y, facing } = controller.state.player;
@@ -123,6 +175,10 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
         persistPosition();
         showPickupToast(stage, `${ITEMS[itemId]?.name ?? itemId} 획득!`);
       },
+      onDamage: triggerDamageFeedback,
+      onPlayerDeath: showDeathScreen,
+      onPrincipalStateChange: handlePrincipalStateChange,
+      onDefeatAnimationEnd: () => persist?.({ defeatedEncounterId: undefined }),
     });
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
     forcePauseCheckbox.addEventListener("change", () => {
@@ -134,6 +190,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     node.querySelector("#home-button").addEventListener("click", () => goTo("title"));
     node.querySelector("#pause-option-button").addEventListener("click", openOptions);
     node.querySelector("#mobile-pause-button").addEventListener("click", () => setPauseMenuOpen(true));
+    node.querySelector("#death-restart-button").addEventListener("click", () => goTo("story"));
+    node.querySelector("#death-home-button").addEventListener("click", () => goTo("title"));
     window.addEventListener("keydown", handlePauseKey);
     controller.start();
     autosaveIntervalId = window.setInterval(persistPosition, POSITION_AUTOSAVE_INTERVAL_MS);

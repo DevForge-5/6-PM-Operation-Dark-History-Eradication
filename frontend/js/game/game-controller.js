@@ -1,4 +1,12 @@
-import { clearInput, createGameState, getFacingDirection, getMovementVector, setDirection } from "./game-state.js";
+import {
+  applyHpDelta,
+  clearInput,
+  createGameState,
+  getFacingDirection,
+  getMovementVector,
+  isHpDepleted,
+  setDirection,
+} from "./game-state.js";
 
 const KEY_DIRECTIONS = Object.freeze({
   ArrowUp: "up",
@@ -18,6 +26,18 @@ function rectanglesOverlap(first, second) {
     && first.y < second.y + second.height
     && first.y + first.height > second.y
   );
+}
+
+export function getPrincipalState(elapsedSeconds, timing) {
+  const cycleDuration = timing.seatedSeconds + timing.suspiciousSeconds + timing.alertSeconds;
+  const cycleElapsed = elapsedSeconds % cycleDuration;
+  if (cycleElapsed < timing.seatedSeconds) {
+    return "seated";
+  }
+  if (cycleElapsed < timing.seatedSeconds + timing.suspiciousSeconds) {
+    return "suspicious";
+  }
+  return "alert";
 }
 
 export function moveWithAxisCollisions(position, deltaX, deltaY, canOccupy) {
@@ -157,10 +177,15 @@ export class GameController {
     playerPosition,
     clearedEventIds,
     collectedItemIds,
+    defeatedEncounterId,
     onFrame,
     onEncounter,
     onReachGoal,
     onPickup,
+    onDamage,
+    onPlayerDeath,
+    onPrincipalStateChange,
+    onDefeatAnimationEnd,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -195,6 +220,10 @@ export class GameController {
     this.onFrame = onFrame;
     this.onEncounter = onEncounter;
     this.onReachGoal = onReachGoal;
+    this.onDamage = onDamage;
+    this.onPlayerDeath = onPlayerDeath;
+    this.onPrincipalStateChange = onPrincipalStateChange;
+    this.onDefeatAnimationEnd = onDefeatAnimationEnd;
     this.triggeredEncounterId = null;
     this.goalReached = false;
     this.viewport = { ...config.canvas };
@@ -205,6 +234,26 @@ export class GameController {
     this.pointerDirections = new Map();
     this.playerAnimationFrame = 0;
     this.playerAnimationElapsed = 0;
+    this.defeatAnimation = this.state.encounters.find(
+      (encounter) => encounter.eventId === defeatedEncounterId,
+    ) ?? null;
+    if (this.defeatAnimation) {
+      this.defeatAnimation.elapsedSeconds = 0;
+    }
+    this.isInPrincipalDanger = false;
+    this.isInOffice = false;
+    this.officeRevealProgress = 0;
+    this.principalElapsedSeconds = 0;
+    this.principalState = "seated";
+    this.vaseAttack = {
+      triggered: false,
+      nextShot: 0,
+      shotDelay: 0,
+      projectiles: [],
+      droppedVaseIndexes: new Set(),
+    };
+    this.damageFeedbackCooldown = 0;
+    this.playerDefeated = false;
     this.visionRadius = config.player.size * 2.5;
     this.fogCanvas = document.createElement("canvas");
     this.fogContext = this.fogCanvas.getContext("2d");
@@ -228,26 +277,34 @@ export class GameController {
     this.bindEvents();
 
     try {
-      const [map, playerDown, playerUp, playerLeft, playerRight, monster, mimic, barrier, computer, earbuds] = await Promise.all([
+      const [map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer, earbuds, principalIdle, principalSuspicious, principalAlert, sofa, ...vases] = await Promise.all([
         loadImage(this.config.assets.map),
         loadImage(this.config.assets.player.down),
         loadImage(this.config.assets.player.up),
         loadImage(this.config.assets.player.left),
         loadImage(this.config.assets.player.right),
         loadImage(this.config.assets.monster),
+        loadImage(this.config.assets.monsterDefeat),
         loadImage(this.config.assets.mimic),
         loadImage(this.config.assets.barrier),
         loadImage(this.config.assets.computer),
         loadImage(this.config.assets.earbuds),
+        loadImage(this.config.assets.office.principalIdle),
+        loadImage(this.config.assets.office.principalSuspicious),
+        loadImage(this.config.assets.office.principalAlert),
+        loadImage(this.config.assets.office.sofa),
+        ...this.config.assets.office.vases.map((source) => loadImage(source)),
       ]);
 
       this.images = {
         map,
         monster,
+        monsterDefeat,
         mimic,
         barrier,
         computer,
         earbuds,
+        office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
       this.prepareMapCollision();
@@ -453,6 +510,144 @@ export class GameController {
     return this.config.barrier;
   }
 
+  getSofaCollisionBox() {
+    const sofa = this.config.office.sofa;
+    return {
+      x: sofa.x + 8,
+      y: sofa.y + 28,
+      width: sofa.width - 16,
+      height: sofa.height - 28,
+    };
+  }
+
+  getPlayerFootPoint() {
+    const player = this.state.player;
+    return { x: player.x + player.size / 2, y: player.y + player.size - this.config.player.footInsetY };
+  }
+
+  isPlayerInside(box) {
+    const point = this.getPlayerFootPoint();
+    return (
+      point.x >= box.x
+      && point.x <= box.x + box.width
+      && point.y >= box.y
+      && point.y <= box.y + box.height
+    );
+  }
+
+  updatePrincipal(deltaSeconds) {
+    const office = this.config.office;
+    const wasInOffice = this.isInOffice;
+    this.isInOffice = this.isPlayerInside(office.bounds);
+    const revealDirection = this.isInOffice ? 1 : -1;
+    this.officeRevealProgress = clampToRange(
+      this.officeRevealProgress + (deltaSeconds / office.revealDuration) * revealDirection,
+      0,
+      1,
+    );
+
+    if (!this.isInOffice) {
+      this.principalElapsedSeconds = 0;
+      this.isInPrincipalDanger = false;
+      if (wasInOffice && this.principalState !== "seated") {
+        this.principalState = "seated";
+        this.onPrincipalStateChange?.(this.principalState);
+      }
+      return;
+    }
+
+    this.principalElapsedSeconds += deltaSeconds;
+    const nextState = getPrincipalState(this.principalElapsedSeconds, office.principalTiming);
+    if (nextState !== this.principalState) {
+      this.principalState = nextState;
+      this.onPrincipalStateChange?.(this.principalState);
+    }
+
+    this.isInPrincipalDanger = this.principalState === "alert" && !this.isPlayerInside(office.safeZone);
+    if (this.isInPrincipalDanger) {
+      this.takeDamage(office.alertDamagePerSecond * deltaSeconds);
+    }
+  }
+
+  takeDamage(amount) {
+    const previousHp = this.state.stats.hp;
+    applyHpDelta(this.state.stats, -amount);
+    if (this.state.stats.hp < previousHp && this.damageFeedbackCooldown <= 0) {
+      this.onDamage?.();
+      this.damageFeedbackCooldown = 0.32;
+    }
+    if (!this.playerDefeated && isHpDepleted(this.state.stats)) {
+      this.playerDefeated = true;
+      this.state.isRunning = false;
+      this.clearAllInput();
+      this.onPlayerDeath?.();
+    }
+  }
+
+  triggerVaseAttack() {
+    this.vaseAttack.triggered = true;
+  }
+
+  launchVaseAttack() {
+    const attack = this.config.office.vaseAttack;
+    const sourceIndex = attack.sourceVaseIndexes[this.vaseAttack.nextShot];
+    const source = this.config.office.vases[sourceIndex];
+    const sourceCenterX = source.x + source.size / 2;
+    const sourceCenterY = source.y + source.size / 2;
+
+    this.vaseAttack.droppedVaseIndexes.add(sourceIndex);
+    this.vaseAttack.projectiles.push({
+      sourceIndex,
+      x: sourceCenterX,
+      y: sourceCenterY,
+      velocityY: attack.fallSpeed,
+    });
+    this.vaseAttack.nextShot += 1;
+    this.vaseAttack.shotDelay = attack.shotDelay;
+  }
+
+  updateOfficeHazards(deltaSeconds) {
+    const footPoint = this.getPlayerFootPoint();
+    this.updatePrincipal(deltaSeconds);
+
+    const attack = this.config.office.vaseAttack;
+    const trigger = attack.trigger;
+    if (
+      !this.vaseAttack.triggered
+      && footPoint.x >= trigger.x
+      && footPoint.x <= trigger.x + trigger.width
+      && footPoint.y >= trigger.y
+      && footPoint.y <= trigger.y + trigger.height
+    ) {
+      this.triggerVaseAttack();
+    }
+
+    if (this.vaseAttack.triggered && this.vaseAttack.nextShot < attack.sourceVaseIndexes.length) {
+      this.vaseAttack.shotDelay -= deltaSeconds;
+      if (this.vaseAttack.shotDelay <= 0) {
+        this.launchVaseAttack();
+      }
+    }
+
+    const size = attack.projectileSize;
+    this.vaseAttack.projectiles = this.vaseAttack.projectiles.filter((projectile) => {
+      projectile.y += projectile.velocityY * deltaSeconds;
+      const projectileBox = {
+        x: projectile.x - size / 2,
+        y: projectile.y - size / 2,
+        width: size,
+        height: size,
+      };
+
+      if (rectanglesOverlap(this.getPlayerCollisionBox(this.state.player.x, this.state.player.y), projectileBox)) {
+        this.takeDamage(attack.damage);
+        return false;
+      }
+
+      return projectile.y <= this.config.world.height + size;
+    });
+  }
+
   isWithinVision(x, y, width, height) {
     const player = this.state.player;
     const centerX = player.x + player.size / 2;
@@ -490,6 +685,9 @@ export class GameController {
     if (rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
       return false;
     }
+    if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
+      return false;
+    }
 
     for (const encounter of this.state.encounters) {
       if (!encounter.enabled) {
@@ -509,6 +707,16 @@ export class GameController {
   }
 
   update(deltaSeconds) {
+    this.damageFeedbackCooldown = Math.max(0, this.damageFeedbackCooldown - deltaSeconds);
+    if (this.defeatAnimation) {
+      this.defeatAnimation.elapsedSeconds += deltaSeconds;
+      const duration = this.config.monsterDefeat.frameCount * this.config.monsterDefeat.frameDuration;
+      if (this.defeatAnimation.elapsedSeconds >= duration) {
+        this.defeatAnimation = null;
+        this.onDefeatAnimationEnd?.();
+      }
+    }
+
     const movement = getMovementVector(this.state.input);
     const isMoving = movement.x !== 0 || movement.y !== 0;
     const distance = this.config.movementSpeed * deltaSeconds;
@@ -521,6 +729,7 @@ export class GameController {
     this.state.player.x = nextPosition.x;
     this.state.player.y = nextPosition.y;
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
+    this.updateOfficeHazards(deltaSeconds);
 
     if (isMoving) {
       this.playerAnimationElapsed += deltaSeconds;
@@ -566,9 +775,13 @@ export class GameController {
     const camera = getCameraPosition(player, this.config, this.viewport);
     const zoom = camera.zoom;
     const activeRoom = camera.room;
-    const fogDisabled = Boolean(activeRoom?.disableFog);
+    const roomFogDisabled = Boolean(activeRoom?.disableFog);
+    const fogOpacity = 1 - this.officeRevealProgress;
     const isVisible = (x, y, w, h) => {
-      if (fogDisabled) {
+      if (this.officeRevealProgress > 0) {
+        return rectanglesOverlap(this.config.office.bounds, { x, y, width: w, height: h });
+      }
+      if (roomFogDisabled) {
         return rectanglesOverlap(activeRoom, { x, y, width: w, height: h });
       }
       return this.isWithinVision(x, y, w, h);
@@ -631,6 +844,33 @@ export class GameController {
       );
     }
 
+    if (this.defeatAnimation && isVisible(
+      this.defeatAnimation.x,
+      this.defeatAnimation.y,
+      this.defeatAnimation.size,
+      this.defeatAnimation.size,
+    )) {
+      const { frameCount, frameDuration } = this.config.monsterDefeat;
+      const sprite = this.images.monsterDefeat;
+      const sourceWidth = sprite.width / frameCount;
+      const frame = Math.min(
+        frameCount - 1,
+        Math.floor(this.defeatAnimation.elapsedSeconds / frameDuration),
+      );
+
+      this.context.drawImage(
+        sprite,
+        frame * sourceWidth,
+        0,
+        sourceWidth,
+        sprite.height,
+        toScreenX(this.defeatAnimation.x),
+        toScreenY(this.defeatAnimation.y),
+        toScreenSize(this.defeatAnimation.size),
+        toScreenSize(this.defeatAnimation.size),
+      );
+    }
+
     const mimic = this.config.mimic;
     if (isVisible(mimic.x, mimic.y, mimic.size, mimic.size)) {
       this.context.drawImage(
@@ -664,6 +904,62 @@ export class GameController {
       );
     }
 
+    const office = this.config.office;
+    if (isVisible(office.sofa.x, office.sofa.y, office.sofa.width, office.sofa.height)) {
+      this.context.drawImage(
+        this.images.office.sofa,
+        toScreenX(office.sofa.x),
+        toScreenY(office.sofa.y),
+        toScreenSize(office.sofa.width),
+        toScreenSize(office.sofa.height),
+      );
+    }
+
+    if (isVisible(office.principal.x, office.principal.y, office.principal.size, office.principal.size)) {
+      const principalImage = {
+        seated: this.images.office.principalIdle,
+        suspicious: this.images.office.principalSuspicious,
+        alert: this.images.office.principalAlert,
+      }[this.principalState];
+      this.context.drawImage(
+        principalImage,
+        toScreenX(office.principal.x),
+        toScreenY(office.principal.y),
+        toScreenSize(office.principal.size),
+        toScreenSize(office.principal.size),
+      );
+    }
+
+    for (const [index, vase] of office.vases.entries()) {
+      if (this.vaseAttack.droppedVaseIndexes.has(index)) {
+        continue;
+      }
+      if (!isVisible(vase.x, vase.y, vase.size, vase.size)) {
+        continue;
+      }
+
+      this.context.drawImage(
+        this.images.office.vases[index],
+        toScreenX(vase.x),
+        toScreenY(vase.y),
+        toScreenSize(vase.size),
+        toScreenSize(vase.size),
+      );
+    }
+
+    for (const projectile of this.vaseAttack.projectiles) {
+      if (!isVisible(projectile.x - 20, projectile.y - 20, 40, 40)) {
+        continue;
+      }
+
+      const size = toScreenSize(this.config.office.vaseAttack.projectileSize);
+      this.context.save();
+      this.context.translate(toScreenX(projectile.x), toScreenY(projectile.y));
+      this.context.rotate(Math.PI);
+      this.context.drawImage(this.images.office.vases[projectile.sourceIndex], -size / 2, -size / 2, size, size);
+      this.context.restore();
+    }
+
     const playerSprite = this.images.player[player.facing];
     const sourceSize = playerSprite.height;
     this.context.drawImage(
@@ -678,8 +974,15 @@ export class GameController {
       toScreenSize(player.size),
     );
 
-    if (!fogDisabled) {
-      this.renderFogOfWar(toScreenX, toScreenY, player.x + player.size / 2, player.y + player.size / 2, zoom);
+    if (!roomFogDisabled && fogOpacity > 0) {
+      this.renderFogOfWar(
+        toScreenX,
+        toScreenY,
+        player.x + player.size / 2,
+        player.y + player.size / 2,
+        zoom,
+        fogOpacity,
+      );
     }
 
     this.canvas.dataset.playerX = player.x.toFixed(2);
@@ -688,13 +991,13 @@ export class GameController {
     this.canvas.dataset.cameraY = camera.y.toFixed(2);
   }
 
-  renderFogOfWar(toScreenX, toScreenY, playerCenterX, playerCenterY, zoom) {
+  renderFogOfWar(toScreenX, toScreenY, playerCenterX, playerCenterY, zoom, opacity = 1) {
     const { width, height } = this.viewport;
     const screenRadius = this.visionRadius * zoom;
     const screenCenterX = toScreenX(playerCenterX);
     const screenCenterY = toScreenY(playerCenterY);
     const fogCtx = this.fogContext;
-    const fogColor = "rgba(4, 6, 8, 0.9)";
+    const fogColor = `rgba(4, 6, 8, ${0.9 * opacity})`;
 
     fogCtx.clearRect(0, 0, width, height);
     fogCtx.fillStyle = fogColor;

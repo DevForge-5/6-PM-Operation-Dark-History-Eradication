@@ -313,6 +313,90 @@
   outline-offset: 6px;
 }
 
+/* Game over overlay */
+.death-overlay {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 14%) 0 2px, transparent 2px 5px),
+    rgb(5 2 3 / 88%);
+  backdrop-filter: blur(5px) grayscale(0.8);
+}
+
+.death-overlay[hidden] {
+  display: none;
+}
+
+.death-overlay__panel {
+  width: min(620px, 92vw);
+  border: 5px solid #ff3f3f;
+  padding: clamp(28px, 5vw, 64px);
+  background: #100708;
+  box-shadow:
+    0 0 0 7px #31090c,
+    0 0 42px rgb(255 34 34 / 52%),
+    inset 0 0 42px rgb(125 0 0 / 34%);
+  color: #fff;
+  font-family: "Press Start 2P", monospace;
+  text-align: center;
+}
+
+.death-overlay__eyebrow {
+  margin-bottom: 18px;
+  color: #ff9292;
+  font-size: clamp(10px, 1.4vw, 15px);
+  letter-spacing: 0.12em;
+}
+
+.death-overlay__title {
+  color: #ff3939;
+  font-size: clamp(38px, 7vw, 82px);
+  line-height: 1.1;
+  text-shadow: 5px 5px 0 #5b080d;
+}
+
+.death-overlay__message {
+  margin-top: 22px;
+  color: #f6dddd;
+  font-family: "Galmuri11", monospace;
+  font-size: clamp(16px, 2vw, 24px);
+}
+
+.death-overlay__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.death-overlay__button {
+  border: 3px solid #fff;
+  padding: 16px 12px;
+  background: #1d1011;
+  color: #fff;
+  font-family: "Galmuri11", monospace;
+  font-size: clamp(16px, 2vw, 23px);
+  cursor: pointer;
+}
+
+.death-overlay__button:hover,
+.death-overlay__button:focus-visible {
+  border-color: #ff4f4f;
+  outline: none;
+  background: #4a1116;
+  box-shadow: 0 0 18px rgb(255 40 40 / 45%);
+}
+
+@media (max-width: 560px) {
+  .death-overlay__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* HUD */
 .hud {
   position: absolute;

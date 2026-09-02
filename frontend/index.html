@@ -27,6 +27,9 @@
             aria-label="주인공 이동 화면. 키보드에서는 WASD 또는 방향키를 사용하세요."
           ></canvas>
 
+          <div id="principal-danger-overlay" class="principal-danger-overlay" aria-hidden="true"></div>
+          <div id="damage-flash-overlay" class="damage-flash-overlay" aria-hidden="true"></div>
+
           <div class="mobile-controls" aria-label="모바일 이동 조작">
             <button class="direction-button direction-button--up" type="button" data-direction="up" aria-label="위로 이동">▲</button>
             <button class="direction-button direction-button--left" type="button" data-direction="left" aria-label="왼쪽으로 이동">◀</button>
@@ -63,6 +66,18 @@
               <img id="sound-toggle-icon" src="./assets/images/PausedIMG/speaker%201.png" alt="">
             </button>
             <button id="pause-option-button" class="pause-overlay__option" type="button" aria-label="설정 열기">⚙</button>
+          </section>
+
+          <section id="death-overlay" class="death-overlay" aria-label="게임 오버" hidden>
+            <div class="death-overlay__panel">
+              <p class="death-overlay__eyebrow">MISSION FAILED</p>
+              <h2 class="death-overlay__title">GAME OVER</h2>
+              <p class="death-overlay__message">흑역사를 막지 못했습니다.</p>
+              <div class="death-overlay__actions">
+                <button id="death-restart-button" class="death-overlay__button" type="button">다시 시작</button>
+                <button id="death-home-button" class="death-overlay__button" type="button">메인 메뉴</button>
+              </div>
+            </div>
           </section>
         </section>
       </main>

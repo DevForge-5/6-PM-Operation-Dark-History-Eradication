@@ -10,6 +10,50 @@
   animation: screen-shake 320ms ease-in-out;
 }
 
+@keyframes principal-danger-pulse {
+  0%, 100% { opacity: 0.68; }
+  50% { opacity: 1; }
+}
+
+.principal-danger-overlay {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow:
+    inset 0 0 48px rgb(255 24 24 / 72%),
+    inset 0 0 120px rgb(125 0 0 / 48%);
+  transition: opacity 180ms ease-out;
+}
+
+.principal-danger-overlay.is-visible {
+  opacity: 1;
+  animation: principal-danger-pulse 700ms ease-in-out infinite;
+}
+
+@keyframes damage-frame-flash {
+  0% { opacity: 0; }
+  16% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.damage-flash-overlay {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  border: clamp(8px, 1.4vw, 22px) solid rgb(255 35 35 / 82%);
+  box-shadow:
+    inset 0 0 72px rgb(255 0 0 / 92%),
+    inset 0 0 180px rgb(105 0 0 / 66%);
+}
+
+.damage-flash-overlay.is-visible {
+  animation: damage-frame-flash 460ms ease-out forwards;
+}
+
 @keyframes cringe-flash {
   0% { opacity: 0.6; }
   100% { opacity: 0; }

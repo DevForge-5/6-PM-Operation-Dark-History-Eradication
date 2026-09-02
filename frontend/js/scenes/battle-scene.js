@@ -122,7 +122,10 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     ) {
       goTo("ending");
     } else {
-      goTo("exploration", payload?.player ? { player: payload.player } : undefined);
+      goTo("exploration", {
+        ...(payload?.player ? { player: payload.player } : {}),
+        defeatedEncounterId: event.id,
+      });
     }
   }
 
