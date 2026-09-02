@@ -115,7 +115,7 @@ export function getCameraPosition(player, config, viewport = config.canvas) {
   const centerX = player.x + player.size / 2;
   const centerY = player.y + player.size / 2;
   const footX = player.x + player.size / 2;
-  const footY = player.y + player.size;
+  const footY = player.y + player.size - config.player.footInsetY;
   const room = findRoomForPoint(config.rooms, footX, footY);
   const bounds = room
     ? getFrameBounds(room)

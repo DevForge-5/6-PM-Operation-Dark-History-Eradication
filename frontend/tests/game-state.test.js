@@ -229,8 +229,8 @@ test("나무 바닥 방은 계단쪽 입구 여유(marginTop) 범위까지만 �
   const marginTop = room.marginTop ?? room.margin ?? 0;
   const doorwayX = room.x + room.width / 2;
   const viewport = { width: 1024, height: 576 };
-  // 판정 기준이 발밑 픽셀 중앙(player.y + size)이므로, 원하는 footY를 만들려면 player.y = footY - size.
-  const playerAtFoot = (footY) => ({ x: doorwayX - 32, y: footY - 64, size: 64 });
+  // 판정 기준이 발밑 픽셀 중앙(player.y + size - footInsetY)이므로, 원하는 footY를 만들려면 player.y = footY - size + footInsetY.
+  const playerAtFoot = (footY) => ({ x: doorwayX - 32, y: footY - 64 + GAME_CONFIG.player.footInsetY, size: 64 });
 
   const cameraWellBeforeDoorway = getCameraPosition(playerAtFoot(room.y - marginTop - 100), GAME_CONFIG, viewport);
   assert(cameraWellBeforeDoorway.zoom === GAME_CONFIG.camera.zoom, "계단 복도 안인데도 방 시점으로 전환됐습니다.");
@@ -282,6 +282,22 @@ test("stairsRoom은 왼쪽 통로 타일 경계를 정확히 넘으면 잠기고
 
   const cameraInsideRoom = getCameraPosition(at(room.x), GAME_CONFIG, viewport);
   assert(cameraInsideRoom.zoom < GAME_CONFIG.camera.zoom, "방 안인데 방 시점으로 전환되지 않았습니다.");
+});
+
+test("아래쪽 벽에 완전히 붙어도(충돌 판정상 최대치) 방 시점 고정이 풀리지 않는다", () => {
+  const room = GAME_CONFIG.rooms.find((candidate) => candidate.id === "stairsRoom");
+  const viewport = { width: 1024, height: 576 };
+  // 벽에 밀착했을 때 스프라이트 전체 하단(player.y + size)이 방 경계에 딱 걸치는 위치.
+  // footInsetY를 반영하지 않으면 이 지점에서 발 판정점이 방 경계를 벗어나 카메라 락이 풀린다.
+  const playerAtBottomWall = {
+    x: room.x + room.width / 2 - 32,
+    y: room.y + room.height - 64,
+    size: 64,
+  };
+
+  const camera = getCameraPosition(playerAtBottomWall, GAME_CONFIG, viewport);
+  assert(camera.zoom < GAME_CONFIG.camera.zoom, "아래쪽 벽에 붙자 방 시점이 풀렸습니다.");
+  assert(camera.room?.id === "stairsRoom", "아래쪽 벽에 붙자 방 정보가 사라졌습니다.");
 });
 
 test("스탯 초기값이 설정값과 같다", () => {
