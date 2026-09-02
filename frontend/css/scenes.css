@@ -62,9 +62,10 @@
   background: none;
   border: none;
   padding: 4px 10px 4px 0;
-  font-family: "Press Start 2P", monospace;
-  font-size: clamp(22px, 2.5vw, 58px);
-  font-weight: 400;
+  font-family: "Galmuri11", monospace;
+  font-size: clamp(28px, 3.2vw, 72px);
+  font-weight: 700;
+  -webkit-text-stroke: 1px #fff;
   line-height: 1.2;
   letter-spacing: 0;
   color: #fff;
@@ -80,6 +81,7 @@
 .title-scene__menu-button:hover,
 .title-scene__menu-button:focus-visible {
   color: #ffcc4d;
+  -webkit-text-stroke: 1px #ffcc4d;
   outline: none;
   transform: translateX(8px);
 }

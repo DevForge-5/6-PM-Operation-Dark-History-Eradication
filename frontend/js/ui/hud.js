@@ -10,7 +10,7 @@ export function createHud({ root, stats }) {
         <span class="hud__bar-empty" aria-hidden="true"></span>
       </div>
       <div class="hud__stat hud__stat--cringe" role="meter" aria-label="흑역사 수치">
-        <img class="hud__stat-image" src="./assets/images/Group%2011.png" alt="" aria-hidden="true">
+        <img class="hud__stat-image" src="./assets/images/항마력창 1.png" alt="" aria-hidden="true">
         <span class="hud__bar-empty" aria-hidden="true"></span>
       </div>
     </div>

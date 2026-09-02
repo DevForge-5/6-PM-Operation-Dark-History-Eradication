@@ -110,7 +110,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       stats: session.stats,
       playerPosition: payload?.player,
       clearedEventIds: session.clearedEvents,
-      collectedItemIds: session.inventory,
+      collectedItemIds: session.collectedPickups,
       onFrame: () => hud.update(session.stats),
       onEncounter: (eventId) => {
         const { x, y, facing } = controller.state.player;
@@ -119,6 +119,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       onReachGoal: () => goTo("ending"),
       onPickup: (itemId) => {
         session.inventory.add(itemId);
+        session.collectedPickups.add(itemId);
         persistPosition();
         showPickupToast(stage, `${ITEMS[itemId]?.name ?? itemId} 획득!`);
       },

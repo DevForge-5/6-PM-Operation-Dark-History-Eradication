@@ -114,19 +114,97 @@ test("얇은 벽도 한 프레임에 건너뛰지 않는다", () => {
 test("카메라가 전체 맵 범위 안에서 주인공을 따라간다", () => {
   const state = createGameState(GAME_CONFIG);
   const camera = getCameraPosition(state.player, GAME_CONFIG);
-  assert(camera.x === 1275.4285714285716 && camera.y === 59.428571428571416, "초기 카메라 위치가 올바르지 않습니다.");
+  assert(camera.x === 1363.2 && camera.y === 108.8, "초기 카메라 위치가 올바르지 않습니다.");
 
   const edgeCamera = getCameraPosition(
     { x: GAME_CONFIG.world.width - 64, y: GAME_CONFIG.world.height - 64, size: 64 },
     GAME_CONFIG,
   );
-  assert(edgeCamera.x === 2934.857142857143 && edgeCamera.y === 886.8571428571429, "카메라가 맵 경계를 벗어났습니다.");
+  assert(edgeCamera.x === 3110.4 && edgeCamera.y === 985.6, "카메라가 맵 경계를 벗어났습니다.");
 });
 
 test("카메라가 브라우저 화면 크기를 기준으로 계산된다", () => {
   const state = createGameState(GAME_CONFIG);
   const camera = getCameraPosition(state.player, GAME_CONFIG, { width: 1280, height: 800 });
-  assert(camera.x === 1202.2857142857142 && camera.y === 0, "브라우저 크기가 카메라에 반영되지 않았습니다.");
+  assert(camera.x === 1312 && camera.y === 64, "브라우저 크기가 카메라에 반영되지 않았습니다.");
+});
+
+test("방이 화면보다 크면 벽+여백(framePadding)을 포함해 방 전체가 보이도록 축소되어 고정된다", () => {
+  const room = GAME_CONFIG.rooms.find((candidate) => candidate.id === "serverRoom");
+  const framePadding = room.framePadding ?? 0;
+  const player = { x: room.x + room.width / 2 - 32, y: room.y + room.height / 2 - 32, size: 64 };
+  const viewport = { width: 1024, height: 576 };
+  const camera = getCameraPosition(player, GAME_CONFIG, viewport);
+  const expandedWidth = room.width + framePadding * 2;
+  const expandedHeight = room.height + framePadding * 2;
+  const expectedZoom = Math.min(GAME_CONFIG.camera.zoom, viewport.width / expandedWidth, viewport.height / expandedHeight);
+
+  const visibleHeight = Math.min(viewport.height / expectedZoom, GAME_CONFIG.world.height);
+  const expectedY = Math.max(0, Math.min(room.y - framePadding, GAME_CONFIG.world.height - visibleHeight));
+
+  assert(nearlyEqual(camera.zoom, expectedZoom), "여유를 포함한 방 크기에 맞춰 줌이 축소되지 않았습니다.");
+  assert(camera.zoom < GAME_CONFIG.camera.zoom, "방이 화면보다 큰데도 기본 줌이 유지되고 있습니다.");
+  assert(nearlyEqual(camera.y, expectedY), "세로 방향 여유를 포함해 방이 고정되지 않았습니다(맵 경계 클램프 포함).");
+});
+
+test("나무 바닥 방은 계단쪽 입구 여유(marginTop) 범위까지만 방 시점을 유지한다 (발밑 기준 판정)", () => {
+  const room = GAME_CONFIG.rooms.find((candidate) => candidate.id === "eastHall");
+  const marginTop = room.marginTop ?? room.margin ?? 0;
+  const doorwayX = room.x + room.width / 2;
+  const viewport = { width: 1024, height: 576 };
+  // 판정 기준이 발밑 픽셀 중앙(player.y + size)이므로, 원하는 footY를 만들려면 player.y = footY - size.
+  const playerAtFoot = (footY) => ({ x: doorwayX - 32, y: footY - 64, size: 64 });
+
+  const cameraWellBeforeDoorway = getCameraPosition(playerAtFoot(room.y - marginTop - 100), GAME_CONFIG, viewport);
+  assert(cameraWellBeforeDoorway.zoom === GAME_CONFIG.camera.zoom, "계단 복도 안인데도 방 시점으로 전환됐습니다.");
+  assert(!cameraWellBeforeDoorway.room?.disableFog, "계단 복도 안인데도 그림자가 꺼졌습니다.");
+
+  const cameraWithinMargin = getCameraPosition(playerAtFoot(room.y - marginTop / 2), GAME_CONFIG, viewport);
+  assert(cameraWithinMargin.zoom < GAME_CONFIG.camera.zoom, "입구 여유 범위(벽에 붙은 위치)에서 방 시점이 유지되지 않았습니다.");
+  assert(cameraWithinMargin.room?.disableFog === true, "입구 여유 범위에서 그림자가 꺼지지 않았습니다.");
+
+  const cameraOnRoomTile = getCameraPosition(playerAtFoot(room.y), GAME_CONFIG, viewport);
+  assert(cameraOnRoomTile.zoom < GAME_CONFIG.camera.zoom, "나무 타일을 밟았는데 방 시점으로 전환되지 않았습니다.");
+  assert(cameraOnRoomTile.room?.disableFog === true, "나무 바닥 방인데 그림자가 꺼지지 않았습니다.");
+});
+
+test("eastHall 왼쪽 통로 경계는 여유 없이 그대로 유지된다", () => {
+  const room = GAME_CONFIG.rooms.find((candidate) => candidate.id === "eastHall");
+  const viewport = { width: 1024, height: 576 };
+  const footY = room.y + room.height / 2;
+
+  const playerJustOutsideLeft = { x: room.x - 1 - 32, y: footY - 64, size: 64 };
+  const cameraJustOutsideLeft = getCameraPosition(playerJustOutsideLeft, GAME_CONFIG, viewport);
+  assert(cameraJustOutsideLeft.zoom === GAME_CONFIG.camera.zoom, "왼쪽 통로에 여유가 생겨 방 시점이 앞당겨졌습니다.");
+
+  const playerJustInsideLeft = { x: room.x - 32, y: footY - 64, size: 64 };
+  const cameraJustInsideLeft = getCameraPosition(playerJustInsideLeft, GAME_CONFIG, viewport);
+  assert(cameraJustInsideLeft.zoom < GAME_CONFIG.camera.zoom, "왼쪽 경계에 들어섰는데 방 시점으로 전환되지 않았습니다.");
+});
+
+test("방 시점 고정 상태에서는 그 방 밖 오브젝트(예: 컴퓨터)가 보이지 않는다", () => {
+  const eastHall = GAME_CONFIG.rooms.find((candidate) => candidate.id === "eastHall");
+  const computer = GAME_CONFIG.computer;
+  const roomOverlapsComputer = (
+    computer.x < eastHall.x + eastHall.width
+    && computer.x + computer.size > eastHall.x
+    && computer.y < eastHall.y + eastHall.height
+    && computer.y + computer.size > eastHall.y
+  );
+  assert(!roomOverlapsComputer, "컴퓨터 오브젝트가 eastHall 방 범위 안에 있어 테스트 전제가 맞지 않습니다.");
+});
+
+test("stairsRoom은 왼쪽 통로 타일 경계를 정확히 넘으면 잠기고, 복도에서는 원래대로 돌아간다", () => {
+  const room = GAME_CONFIG.rooms.find((candidate) => candidate.id === "stairsRoom");
+  const doorwayFootY = room.y + room.height / 2;
+  const viewport = { width: 1024, height: 576 };
+  const at = (footX) => ({ x: footX - 32, y: doorwayFootY - 64, size: 64 });
+
+  const cameraInCorridor = getCameraPosition(at(room.x - 1), GAME_CONFIG, viewport);
+  assert(cameraInCorridor.zoom === GAME_CONFIG.camera.zoom, "경계를 넘기 전인데도 방 시점으로 전환됐습니다.");
+
+  const cameraInsideRoom = getCameraPosition(at(room.x), GAME_CONFIG, viewport);
+  assert(cameraInsideRoom.zoom < GAME_CONFIG.camera.zoom, "방 안인데 방 시점으로 전환되지 않았습니다.");
 });
 
 test("스탯 초기값이 설정값과 같다", () => {

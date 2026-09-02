@@ -10,8 +10,29 @@ export const GAME_CONFIG = Object.freeze({
   movementSpeed: 192,
   maxDeltaSeconds: 0.05,
   camera: Object.freeze({
-    zoom: 1.75,
+    zoom: 2.5,
   }),
+  rooms: Object.freeze([
+    Object.freeze({ id: "serverRoom", x: 64, y: 384, width: 896, height: 768, margin: 128, framePadding: 128 }),
+    Object.freeze({
+      id: "eastHall",
+      x: 2560,
+      y: 704,
+      width: 896,
+      height: 448,
+      disableFog: true,
+      marginTop: 64,
+      framePadding: 128,
+    }),
+    Object.freeze({
+      id: "stairsRoom",
+      x: 2368,
+      y: 128,
+      width: 512,
+      height: 448,
+      framePadding: 128,
+    }),
+  ]),
   collision: Object.freeze({
     tileSize: 64,
     walkableTiles: Object.freeze([

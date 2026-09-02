@@ -45,15 +45,82 @@ export function moveWithAxisCollisions(position, deltaX, deltaY, canOccupy) {
   return { x, y };
 }
 
+function getRoomBounds(room) {
+  const marginTop = room.marginTop ?? room.margin ?? 0;
+  const marginBottom = room.marginBottom ?? room.margin ?? 0;
+  const marginLeft = room.marginLeft ?? room.margin ?? 0;
+  const marginRight = room.marginRight ?? room.margin ?? 0;
+  return {
+    minX: room.x - marginLeft,
+    minY: room.y - marginTop,
+    maxX: room.x + room.width + marginRight,
+    maxY: room.y + room.height + marginBottom,
+  };
+}
+
+function findRoomForPoint(rooms, x, y) {
+  if (!rooms) {
+    return null;
+  }
+
+  return rooms.find((room) => {
+    const bounds = getRoomBounds(room);
+    return x >= bounds.minX && x < bounds.maxX && y >= bounds.minY && y < bounds.maxY;
+  }) ?? null;
+}
+
+function getFrameBounds(room) {
+  const padding = room.framePadding ?? 0;
+  return {
+    minX: room.x - padding,
+    minY: room.y - padding,
+    maxX: room.x + room.width + padding,
+    maxY: room.y + room.height + padding,
+  };
+}
+
+function clampToRange(value, min, max) {
+  return Math.max(min, Math.min(value, max));
+}
+
+function clampCameraAxis(target, visibleSize, min, max) {
+  const span = Math.max(0, max - min);
+  if (span <= visibleSize) {
+    return min + (span - visibleSize) / 2;
+  }
+  return clampToRange(target, min, max - visibleSize);
+}
+
 export function getCameraPosition(player, config, viewport = config.canvas) {
-  const zoom = config.camera.zoom;
+  const centerX = player.x + player.size / 2;
+  const centerY = player.y + player.size / 2;
+  const footX = player.x + player.size / 2;
+  const footY = player.y + player.size;
+  const room = findRoomForPoint(config.rooms, footX, footY);
+  const bounds = room
+    ? getFrameBounds(room)
+    : { minX: 0, minY: 0, maxX: config.world.width, maxY: config.world.height };
+
+  let zoom = config.camera.zoom;
+  if (room) {
+    const fitZoomX = viewport.width / (bounds.maxX - bounds.minX);
+    const fitZoomY = viewport.height / (bounds.maxY - bounds.minY);
+    zoom = Math.min(zoom, fitZoomX, fitZoomY);
+  }
+
   const visibleWidth = Math.min(viewport.width / zoom, config.world.width);
   const visibleHeight = Math.min(viewport.height / zoom, config.world.height);
-  const targetX = player.x + player.size / 2 - visibleWidth / 2;
-  const targetY = player.y + player.size / 2 - visibleHeight / 2;
+  const targetX = centerX - visibleWidth / 2;
+  const targetY = centerY - visibleHeight / 2;
+
+  const x = clampCameraAxis(targetX, visibleWidth, bounds.minX, bounds.maxX);
+  const y = clampCameraAxis(targetY, visibleHeight, bounds.minY, bounds.maxY);
+
   return {
-    x: Math.max(0, Math.min(targetX, Math.max(0, config.world.width - visibleWidth))),
-    y: Math.max(0, Math.min(targetY, Math.max(0, config.world.height - visibleHeight))),
+    zoom,
+    room,
+    x: clampToRange(x, 0, Math.max(0, config.world.width - visibleWidth)),
+    y: clampToRange(y, 0, Math.max(0, config.world.height - visibleHeight)),
   };
 }
 
@@ -138,6 +205,9 @@ export class GameController {
     this.pointerDirections = new Map();
     this.playerAnimationFrame = 0;
     this.playerAnimationElapsed = 0;
+    this.visionRadius = config.player.size * 2.5;
+    this.fogCanvas = document.createElement("canvas");
+    this.fogContext = this.fogCanvas.getContext("2d");
 
     this.canvas.width = config.canvas.width;
     this.canvas.height = config.canvas.height;
@@ -303,6 +373,8 @@ export class GameController {
     this.canvas.width = width;
     this.canvas.height = height;
     this.context.imageSmoothingEnabled = false;
+    this.fogCanvas.width = width;
+    this.fogCanvas.height = height;
     this.previousTimestamp = null;
 
     if (this.images) {
@@ -379,6 +451,17 @@ export class GameController {
 
   getBarrierCollisionBox() {
     return this.config.barrier;
+  }
+
+  isWithinVision(x, y, width, height) {
+    const player = this.state.player;
+    const centerX = player.x + player.size / 2;
+    const centerY = player.y + player.size / 2;
+    const closestX = Math.min(Math.max(centerX, x), x + width);
+    const closestY = Math.min(Math.max(centerY, y), y + height);
+    const dx = centerX - closestX;
+    const dy = centerY - closestY;
+    return dx * dx + dy * dy <= this.visionRadius * this.visionRadius;
   }
 
   canPlayerOccupy(x, y) {
@@ -481,7 +564,15 @@ export class GameController {
     const { width, height } = this.viewport;
     const player = this.state.player;
     const camera = getCameraPosition(player, this.config, this.viewport);
-    const zoom = this.config.camera.zoom;
+    const zoom = camera.zoom;
+    const activeRoom = camera.room;
+    const fogDisabled = Boolean(activeRoom?.disableFog);
+    const isVisible = (x, y, w, h) => {
+      if (fogDisabled) {
+        return rectanglesOverlap(activeRoom, { x, y, width: w, height: h });
+      }
+      return this.isWithinVision(x, y, w, h);
+    };
     const mapWidth = Math.min(width / zoom, this.config.world.width);
     const mapHeight = Math.min(height / zoom, this.config.world.height);
     const toScreenX = (x) => (x - camera.x) * zoom;
@@ -503,7 +594,7 @@ export class GameController {
       height,
     );
 
-    if (this.config.goal) {
+    if (this.config.goal && isVisible(this.config.goal.x, this.config.goal.y, this.config.goal.size, this.config.goal.size)) {
       const goal = this.config.goal;
       this.context.fillStyle = "rgba(120, 220, 255, 0.35)";
       this.context.fillRect(toScreenX(goal.x), toScreenY(goal.y), toScreenSize(goal.size), toScreenSize(goal.size));
@@ -513,7 +604,7 @@ export class GameController {
     }
 
     for (const pickup of this.state.pickups) {
-      if (!pickup.enabled) {
+      if (!pickup.enabled || !isVisible(pickup.x, pickup.y, pickup.size, pickup.size)) {
         continue;
       }
 
@@ -527,7 +618,7 @@ export class GameController {
     }
 
     for (const encounter of this.state.encounters) {
-      if (!encounter.enabled) {
+      if (!encounter.enabled || !isVisible(encounter.x, encounter.y, encounter.size, encounter.size)) {
         continue;
       }
 
@@ -541,31 +632,37 @@ export class GameController {
     }
 
     const mimic = this.config.mimic;
-    this.context.drawImage(
-      this.images.mimic,
-      toScreenX(mimic.x),
-      toScreenY(mimic.y),
-      toScreenSize(mimic.size),
-      toScreenSize(mimic.size),
-    );
+    if (isVisible(mimic.x, mimic.y, mimic.size, mimic.size)) {
+      this.context.drawImage(
+        this.images.mimic,
+        toScreenX(mimic.x),
+        toScreenY(mimic.y),
+        toScreenSize(mimic.size),
+        toScreenSize(mimic.size),
+      );
+    }
 
     const barrier = this.config.barrier;
-    this.context.drawImage(
-      this.images.barrier,
-      toScreenX(barrier.x),
-      toScreenY(barrier.y),
-      toScreenSize(barrier.width),
-      toScreenSize(barrier.height),
-    );
+    if (isVisible(barrier.x, barrier.y, barrier.width, barrier.height)) {
+      this.context.drawImage(
+        this.images.barrier,
+        toScreenX(barrier.x),
+        toScreenY(barrier.y),
+        toScreenSize(barrier.width),
+        toScreenSize(barrier.height),
+      );
+    }
 
     const computer = this.config.computer;
-    this.context.drawImage(
-      this.images.computer,
-      toScreenX(computer.x),
-      toScreenY(computer.y),
-      toScreenSize(computer.size),
-      toScreenSize(computer.size),
-    );
+    if (isVisible(computer.x, computer.y, computer.size, computer.size)) {
+      this.context.drawImage(
+        this.images.computer,
+        toScreenX(computer.x),
+        toScreenY(computer.y),
+        toScreenSize(computer.size),
+        toScreenSize(computer.size),
+      );
+    }
 
     const playerSprite = this.images.player[player.facing];
     const sourceSize = playerSprite.height;
@@ -581,10 +678,41 @@ export class GameController {
       toScreenSize(player.size),
     );
 
+    if (!fogDisabled) {
+      this.renderFogOfWar(toScreenX, toScreenY, player.x + player.size / 2, player.y + player.size / 2, zoom);
+    }
+
     this.canvas.dataset.playerX = player.x.toFixed(2);
     this.canvas.dataset.playerY = player.y.toFixed(2);
     this.canvas.dataset.cameraX = camera.x.toFixed(2);
     this.canvas.dataset.cameraY = camera.y.toFixed(2);
+  }
+
+  renderFogOfWar(toScreenX, toScreenY, playerCenterX, playerCenterY, zoom) {
+    const { width, height } = this.viewport;
+    const screenRadius = this.visionRadius * zoom;
+    const screenCenterX = toScreenX(playerCenterX);
+    const screenCenterY = toScreenY(playerCenterY);
+    const fogCtx = this.fogContext;
+    const fogColor = "rgba(4, 6, 8, 0.9)";
+
+    fogCtx.clearRect(0, 0, width, height);
+    fogCtx.fillStyle = fogColor;
+    fogCtx.fillRect(0, 0, width, height);
+
+    fogCtx.save();
+    fogCtx.filter = "blur(16px)";
+    fogCtx.globalCompositeOperation = "destination-out";
+    fogCtx.fillStyle = "rgba(0, 0, 0, 1)";
+    fogCtx.fillRect(
+      screenCenterX - screenRadius,
+      screenCenterY - screenRadius,
+      screenRadius * 2,
+      screenRadius * 2,
+    );
+    fogCtx.restore();
+
+    this.context.drawImage(this.fogCanvas, 0, 0);
   }
 
   tick(timestamp) {

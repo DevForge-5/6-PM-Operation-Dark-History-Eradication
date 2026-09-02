@@ -8,6 +8,7 @@ export function saveProgress(sceneName, payload, session) {
       stats: session.stats,
       clearedEvents: [...session.clearedEvents],
       inventory: [...session.inventory],
+      collectedPickups: [...session.collectedPickups],
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {
