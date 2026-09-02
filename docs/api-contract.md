@@ -47,5 +47,5 @@
 
 지금 프론트는 `frontend/js/api/mock-rankings.js`로 목데이터를 쓰고 있습니다.
 백엔드 배포가 끝나면 `frontend/js/api/ranking-service.js`의 `USE_MOCK`을 `false`로
-바꾸기만 하면 실제 API를 호출합니다 (fetch 대상 경로: 프론트와 백엔드가 같은 오리진에서
-서빙되거나, 배포 시 API 베이스 URL을 프록시/환경변수로 맞춰야 함 — 아직 미정).
+바꾸기만 하면 실제 API를 호출합니다. 배포 아키텍처(백엔드는 Render, 프론트는 Vercel — 서로
+다른 오리진)와 `SIXPM_API_BASE_URL` 주입/CORS 설정 방법은 [deployment.md](./deployment.md) 참고.
