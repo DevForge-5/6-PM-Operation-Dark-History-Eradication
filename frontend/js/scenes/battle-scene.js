@@ -12,13 +12,13 @@ import {
   isTimeUp,
 } from "../game/game-state.js";
 
-export function createBattleScene({ root, session, payload, goTo }) {
+export function createBattleScene({ root, session, payload, goTo, persist }) {
   const event = EVENTS[payload?.eventId] ?? EVENTS.hallwayShadow;
   let node = null;
   let hud = null;
   let dialog = null;
   let choicePanel = null;
-  let introIndex = 0;
+  let introIndex = payload?.introIndex ?? 0;
 
   function mount() {
     node = document.createElement("section");
@@ -27,15 +27,32 @@ export function createBattleScene({ root, session, payload, goTo }) {
     root.appendChild(node);
 
     hud = createHud({ root: node, stats: session.stats });
-    dialog = createDialogBox({ root: node });
-    dialog.show(event.intro[introIndex]);
-    dialog.setAdvanceHandler(advanceIntro);
+
+    const phase = payload?.phase ?? "intro";
+    if (phase === "result") {
+      dialog = createDialogBox({ root: node });
+      dialog.show(payload.resultText ?? "");
+      dialog.setAdvanceHandler(finishBattle);
+    } else if (phase === "choice") {
+      choicePanel = createChoicePanel({
+        root: node,
+        choices: event.choices,
+        inventory: session.inventory,
+        onSelect: handleChoice,
+      });
+    } else {
+      dialog = createDialogBox({ root: node });
+      dialog.show(event.intro[introIndex]);
+      dialog.setAdvanceHandler(advanceIntro);
+      persist?.({ eventId: event.id, phase: "intro", introIndex });
+    }
   }
 
   function advanceIntro() {
     introIndex += 1;
     if (introIndex < event.intro.length) {
       dialog.show(event.intro[introIndex]);
+      persist?.({ phase: "intro", introIndex });
       return;
     }
 
@@ -47,11 +64,13 @@ export function createBattleScene({ root, session, payload, goTo }) {
       inventory: session.inventory,
       onSelect: handleChoice,
     });
+    persist?.({ phase: "choice", introIndex: undefined });
   }
 
   async function handleChoice(choice) {
     choicePanel.destroy();
     choicePanel = null;
+    persist?.({ phase: "choice" });
 
     if (choice.requiresItem) {
       session.inventory.delete(choice.requiresItem);
@@ -76,6 +95,7 @@ export function createBattleScene({ root, session, payload, goTo }) {
     dialog = createDialogBox({ root: node });
     dialog.show(outcome.resultText);
     dialog.setAdvanceHandler(finishBattle);
+    persist?.({ phase: "result", resultText: outcome.resultText });
   }
 
   function triggerCringeFeedback() {
@@ -94,7 +114,7 @@ export function createBattleScene({ root, session, payload, goTo }) {
     if (isHpDepleted(session.stats) || isCringeMaxed(session.stats) || isTimeUp(session.stats)) {
       goTo("ending");
     } else {
-      goTo("exploration");
+      goTo("exploration", payload?.player ? { player: payload.player } : undefined);
     }
   }
 

@@ -10,11 +10,24 @@ function showPickupToast(stage, text) {
   setTimeout(() => toast.remove(), 1800);
 }
 
-export function createExplorationScene({ root, config, session, goTo }) {
+const POSITION_AUTOSAVE_INTERVAL_MS = 1000;
+
+export function createExplorationScene({ root, config, session, payload, goTo, persist }) {
   let node = null;
   let controller = null;
   let hud = null;
   let isMuted = false;
+  let autosaveIntervalId = null;
+
+  function persistPosition() {
+    persist?.({
+      player: {
+        x: controller.state.player.x,
+        y: controller.state.player.y,
+        facing: controller.state.player.facing,
+      },
+    });
+  }
 
   function setPaused(isPaused) {
     controller.setPaused(isPaused);
@@ -57,13 +70,18 @@ export function createExplorationScene({ root, config, session, goTo }) {
       assetError: node.querySelector("#asset-error"),
       config,
       stats: session.stats,
+      playerPosition: payload?.player,
       clearedEventIds: session.clearedEvents,
       collectedItemIds: session.inventory,
       onFrame: () => hud.update(session.stats),
-      onEncounter: (eventId) => goTo("battle", { eventId }),
+      onEncounter: (eventId) => {
+        const { x, y, facing } = controller.state.player;
+        goTo("battle", { eventId, player: { x, y, facing } });
+      },
       onReachGoal: () => goTo("ending"),
       onPickup: (itemId) => {
         session.inventory.add(itemId);
+        persistPosition();
         showPickupToast(stage, `${ITEMS[itemId]?.name ?? itemId} 획득!`);
       },
     });
@@ -72,9 +90,14 @@ export function createExplorationScene({ root, config, session, goTo }) {
     node.querySelector("#mobile-pause-button").addEventListener("click", () => setPaused(true));
     window.addEventListener("keydown", handlePauseKey);
     controller.start();
+    autosaveIntervalId = window.setInterval(persistPosition, POSITION_AUTOSAVE_INTERVAL_MS);
   }
 
   function unmount() {
+    if (autosaveIntervalId !== null) {
+      window.clearInterval(autosaveIntervalId);
+      autosaveIntervalId = null;
+    }
     window.removeEventListener("keydown", handlePauseKey);
     controller?.destroy();
     controller = null;

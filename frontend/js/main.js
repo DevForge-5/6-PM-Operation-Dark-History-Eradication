@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "./config.js";
 import { createStats } from "./game/game-state.js";
+import { clearProgress, loadProgress, saveProgress } from "./game/session-storage.js";
 import { createTitleScene } from "./scenes/title-scene.js";
 import { createStoryScene } from "./scenes/story-scene.js";
 import { createExplorationScene } from "./scenes/exploration-scene.js";
@@ -20,6 +21,19 @@ class SceneManager {
     this.config = config;
     this.session = { stats: createStats(config), clearedEvents: new Set(), inventory: new Set() };
     this.currentScene = null;
+    this.currentSceneName = null;
+    this.currentPayload = undefined;
+    this.persist = this.persist.bind(this);
+  }
+
+  persist(payloadPatch) {
+    if (payloadPatch) {
+      this.currentPayload = { ...(this.currentPayload ?? {}), ...payloadPatch };
+    }
+    if (!this.currentSceneName || this.currentSceneName === "title") {
+      return;
+    }
+    saveProgress(this.currentSceneName, this.currentPayload, this.session);
   }
 
   goTo(name, payload) {
@@ -35,14 +49,23 @@ class SceneManager {
     }
 
     this.currentScene?.unmount();
+    this.currentSceneName = name;
+    this.currentPayload = payload;
     this.currentScene = createScene({
       root: this.root,
       config: this.config,
       session: this.session,
       payload,
       goTo: (nextName, nextPayload) => this.goTo(nextName, nextPayload),
+      persist: this.persist,
     });
     this.currentScene.mount();
+
+    if (name === "title") {
+      clearProgress();
+    } else {
+      this.persist();
+    }
   }
 }
 
@@ -51,4 +74,12 @@ const sceneManager = new SceneManager({
   config: GAME_CONFIG,
 });
 
-sceneManager.goTo("title");
+const savedProgress = loadProgress();
+if (savedProgress && savedProgress.scene && savedProgress.scene !== "title" && SCENE_FACTORIES[savedProgress.scene]) {
+  sceneManager.session.stats = savedProgress.stats ?? createStats(GAME_CONFIG);
+  sceneManager.session.clearedEvents = new Set(savedProgress.clearedEvents ?? []);
+  sceneManager.session.inventory = new Set(savedProgress.inventory ?? []);
+  sceneManager.goTo(savedProgress.scene, savedProgress.payload ?? undefined);
+} else {
+  sceneManager.goTo("title");
+}

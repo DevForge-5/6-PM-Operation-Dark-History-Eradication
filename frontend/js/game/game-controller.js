@@ -87,6 +87,7 @@ export class GameController {
     assetError,
     config,
     stats,
+    playerPosition,
     clearedEventIds,
     collectedItemIds,
     onFrame,
@@ -103,6 +104,11 @@ export class GameController {
     this.state = createGameState(config);
     if (stats) {
       this.state.stats = stats;
+    }
+    if (playerPosition) {
+      this.state.player.x = playerPosition.x;
+      this.state.player.y = playerPosition.y;
+      this.state.player.facing = playerPosition.facing ?? this.state.player.facing;
     }
     if (clearedEventIds) {
       for (const encounter of this.state.encounters) {

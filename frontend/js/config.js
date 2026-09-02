@@ -74,9 +74,9 @@ export const GAME_CONFIG = Object.freeze({
       x: 2176,
       y: 128,
       size: 128,
-      collisionInsetX: 24,
-      collisionTop: 24,
-      collisionBottom: 10,
+      collisionInsetX: 0,
+      collisionTop: 0,
+      collisionBottom: 0,
     }),
   ]),
   mimic: Object.freeze({
