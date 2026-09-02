@@ -5,10 +5,10 @@ const INTRO_LINES = [
   "18:00 정각, 전국의 모든 전광판과 SNS로 이 데이터가 생중계된다.\n그 전에 서버실로 가서 사태를 수습해야 한다.",
 ];
 
-export function createStoryScene({ root, goTo }) {
+export function createStoryScene({ root, goTo, payload, persist }) {
   let node = null;
   let dialog = null;
-  let index = 0;
+  let index = payload?.index ?? 0;
 
   function mount() {
     node = document.createElement("section");
@@ -18,6 +18,7 @@ export function createStoryScene({ root, goTo }) {
 
     dialog = createDialogBox({ root: node });
     dialog.show(INTRO_LINES[index]);
+    persist?.({ index });
 
     const advanceStory = () => {
       index += 1;
@@ -26,6 +27,7 @@ export function createStoryScene({ root, goTo }) {
         return;
       }
       dialog.show(INTRO_LINES[index]);
+      persist?.({ index });
     };
     dialog.setAdvanceHandler(advanceStory);
   }
