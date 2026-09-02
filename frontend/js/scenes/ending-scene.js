@@ -1,5 +1,6 @@
 import { createResultScreen } from "../ui/result-screen.js";
 import { resolveEnding } from "../data/endings.js";
+import { audioManager } from "../audio/audio-manager.js";
 
 export function createEndingScene({ root, session, goTo }) {
   let node = null;
@@ -12,6 +13,10 @@ export function createEndingScene({ root, session, goTo }) {
     root.appendChild(node);
 
     const ending = resolveEnding(session.stats, session.selectedEndingId);
+    if (ending.id === "ending2") {
+      audioManager.playSfx("screen_glitch");
+    }
+    audioManager.playSfx(ending.type === "True" || ending.type === "Secret" ? "mission_clear" : "game_over");
     resultScreen = createResultScreen({
       root: node,
       ending,

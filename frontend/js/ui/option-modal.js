@@ -3,6 +3,7 @@ import {
   setBgmVolume,
   setSfxVolume,
 } from "../audio/audio-settings.js";
+import { audioManager } from "../audio/audio-manager.js";
 
 const VOLUME_STEP = 10;
 
@@ -16,7 +17,7 @@ export function createOptionModal({ root, onClose, onRestart }) {
     <div class="option-modal__panel">
       <header class="option-modal__header">
         <h2 id="option-title">OPTION</h2>
-        <button type="button" class="option-modal__close" data-action="close" aria-label="설정 닫기">×</button>
+        <button type="button" class="option-modal__close" data-action="close" data-sound="window_close" aria-label="설정 닫기">×</button>
       </header>
       <div class="option-modal__divider" aria-hidden="true"><span>☠</span></div>
       <div class="option-modal__controls">
@@ -26,9 +27,9 @@ export function createOptionModal({ root, onClose, onRestart }) {
             <output data-role="volume-output">100%</output>
           </div>
           <div class="option-volume__control">
-            <button type="button" data-action="decrease" aria-label="효과음 볼륨 낮추기">−</button>
+            <button type="button" data-action="decrease" data-sound="volume_change" aria-label="효과음 볼륨 낮추기">−</button>
             <input type="range" min="0" max="100" step="10" value="100" aria-label="효과음 볼륨">
-            <button type="button" data-action="increase" aria-label="효과음 볼륨 높이기">＋</button>
+            <button type="button" data-action="increase" data-sound="volume_change" aria-label="효과음 볼륨 높이기">＋</button>
           </div>
         </section>
         <section class="option-volume" data-volume="bgm">
@@ -37,13 +38,13 @@ export function createOptionModal({ root, onClose, onRestart }) {
             <output data-role="volume-output">100%</output>
           </div>
           <div class="option-volume__control">
-            <button type="button" data-action="decrease" aria-label="배경음악 볼륨 낮추기">−</button>
+            <button type="button" data-action="decrease" data-sound="volume_change" aria-label="배경음악 볼륨 낮추기">−</button>
             <input type="range" min="0" max="100" step="10" value="100" aria-label="배경음악 볼륨">
-            <button type="button" data-action="increase" aria-label="배경음악 볼륨 높이기">＋</button>
+            <button type="button" data-action="increase" data-sound="volume_change" aria-label="배경음악 볼륨 높이기">＋</button>
           </div>
         </section>
       </div>
-      <button type="button" class="option-modal__restart" data-action="show-restart">다시하기</button>
+      <button type="button" class="option-modal__restart" data-action="show-restart" data-sound="retry">다시하기</button>
       <section class="option-modal__confirm" data-role="restart-confirm" aria-label="다시하기 확인" hidden>
         <p>진행 상황을 초기화하고 처음부터 다시 시작할까요?</p>
         <div>
@@ -82,6 +83,7 @@ export function createOptionModal({ root, onClose, onRestart }) {
     const section = event.target.closest("[data-volume]");
     if (event.target.matches("input[type='range']") && section) {
       changeVolume(section.dataset.volume, event.target.value);
+      audioManager.playSfx("volume_change");
     }
   }
 
@@ -124,6 +126,7 @@ export function createOptionModal({ root, onClose, onRestart }) {
   function handleKeyDown(event) {
     if (event.code === "Escape") {
       event.preventDefault();
+      audioManager.playSfx("window_close");
       onClose();
     }
   }

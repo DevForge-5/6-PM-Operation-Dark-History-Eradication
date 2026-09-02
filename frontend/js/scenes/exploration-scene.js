@@ -3,6 +3,7 @@ import { createHud } from "../ui/hud.js";
 import { ITEMS } from "../data/items.js";
 import { setGameTimerPaused } from "../game/game-timer.js";
 import { createOptionModal } from "../ui/option-modal.js";
+import { audioManager } from "../audio/audio-manager.js";
 
 function showPickupToast(stage, text) {
   const toast = document.createElement("div");
@@ -24,6 +25,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
   let isPauseMenuOpen = false;
   let isForcePaused = false;
   let isSettingsOpen = false;
+  let lastFootstepAt = 0;
+  let lastPlayerPosition = null;
 
   function persistPosition() {
     persist?.({
@@ -35,14 +38,27 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     });
   }
 
+  function isPlayerOnStairs(player) {
+    const room = config.rooms?.find(({ id }) => id === "stairsRoom");
+    return Boolean(room
+      && player.x >= room.x
+      && player.x <= room.x + room.width
+      && player.y >= room.y
+      && player.y <= room.y + room.height);
+  }
+
   function syncPauseState() {
     const shouldPauseGame = isPauseMenuOpen || isForcePaused || isSettingsOpen;
     controller.setPaused(shouldPauseGame);
     setGameTimerPaused(shouldPauseGame);
+    audioManager.setBgmPaused(shouldPauseGame);
     node.querySelector("#pause-overlay").hidden = !isPauseMenuOpen;
   }
 
   function setPauseMenuOpen(isOpen) {
+    if (isOpen && !isPauseMenuOpen) {
+      audioManager.playSfx("pause_open");
+    }
     isPauseMenuOpen = isOpen;
     syncPauseState();
     if (isOpen) {
@@ -83,6 +99,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
 
   function toggleSound() {
     isMuted = !isMuted;
+    audioManager.setMuted(isMuted);
     const button = node.querySelector("#sound-toggle-button");
     const icon = node.querySelector("#sound-toggle-icon");
     button.setAttribute("aria-pressed", String(isMuted));
@@ -111,13 +128,27 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       playerPosition: payload?.player,
       clearedEventIds: session.clearedEvents,
       collectedItemIds: session.collectedPickups,
-      onFrame: () => hud.update(session.stats),
+      onFrame: (state) => {
+        hud.update(session.stats);
+        const { x, y } = state.player;
+        const moved = lastPlayerPosition && (x !== lastPlayerPosition.x || y !== lastPlayerPosition.y);
+        const now = performance.now();
+        if (moved && now - lastFootstepAt >= 280) {
+          audioManager.playFootstep(isPlayerOnStairs(state.player));
+          lastFootstepAt = now;
+        }
+        lastPlayerPosition = { x, y };
+      },
       onEncounter: (eventId) => {
         const { x, y, facing } = controller.state.player;
         goTo("battle", { eventId, player: { x, y, facing } });
       },
-      onReachGoal: () => goTo("ending"),
+      onReachGoal: () => {
+        audioManager.playSfx("machine_cogs");
+        goTo("ending");
+      },
       onPickup: (itemId) => {
+        audioManager.playSfx("item_box_open");
         session.inventory.add(itemId);
         session.collectedPickups.add(itemId);
         persistPosition();
@@ -127,6 +158,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
     forcePauseCheckbox.addEventListener("change", () => {
       isForcePaused = forcePauseCheckbox.checked;
+      audioManager.playSfx("pause_checkbox");
       syncPauseState();
     });
     node.querySelector("#resume-button").addEventListener("click", () => setPauseMenuOpen(false));
@@ -148,6 +180,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     optionModal?.destroy();
     optionModal = null;
     setGameTimerPaused(false);
+    audioManager.setBgmPaused(false);
     controller?.destroy();
     controller = null;
     hud?.destroy();

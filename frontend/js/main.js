@@ -8,6 +8,7 @@ import { createExplorationScene } from "./scenes/exploration-scene.js";
 import { createBattleScene } from "./scenes/battle-scene.js";
 import { createEndingScene } from "./scenes/ending-scene.js";
 import { createLeaderboardScene } from "./scenes/leaderboard-scene.js";
+import { audioManager, bindGlobalUiSounds } from "./audio/audio-manager.js";
 
 const SCENE_FACTORIES = {
   title: createTitleScene,
@@ -82,6 +83,7 @@ class SceneManager {
       persist: this.persist,
     });
     this.currentScene.mount();
+    audioManager.setBgm(["title", "leaderboard", "ending"].includes(name) ? "menuBgm" : "gameplayBgm");
 
     if (name === "title") {
       clearProgress();
@@ -95,6 +97,8 @@ const sceneManager = new SceneManager({
   root: document.querySelector("#scene-root"),
   config: GAME_CONFIG,
 });
+
+bindGlobalUiSounds();
 
 const savedProgress = loadProgress();
 if (savedProgress && savedProgress.scene && savedProgress.scene !== "title" && SCENE_FACTORIES[savedProgress.scene]) {
