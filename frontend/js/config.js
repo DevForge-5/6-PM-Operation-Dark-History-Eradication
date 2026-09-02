@@ -135,8 +135,8 @@ export const GAME_CONFIG = Object.freeze({
     size: 64,
   }),
   goal: Object.freeze({
-    x: 2230,
-    y: 195,
+    x: 2240,
+    y: 768,
     size: 60,
   }),
   pickups: Object.freeze([
