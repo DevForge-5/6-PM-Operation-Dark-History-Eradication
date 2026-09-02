@@ -30,6 +30,11 @@ export function createResultScreen({ root, ending, stats, onRestart }) {
   const rankStatus = node.querySelector("[data-role='rank-status']");
 
   function renderRankings(ranks) {
+    if (ranks.length === 0) {
+      rankingList.innerHTML = "<li class=\"result-screen__rank-loading\">아직 등록된 기록이 없습니다.</li>";
+      return;
+    }
+
     rankingList.innerHTML = ranks
       .slice(0, 5)
       .map((rank, index) => `
