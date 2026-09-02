@@ -253,10 +253,32 @@
   gap: clamp(24px, 3vw, 52px);
 }
 
-.pause-overlay__icons img {
+.pause-overlay__icon-button,
+.pause-overlay__icons > img {
   width: clamp(48px, 5.3vw, 104px);
   height: auto;
+}
+
+.pause-overlay__icon-button {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pause-overlay__icons img {
+  display: block;
+  height: auto;
   image-rendering: pixelated;
+}
+
+.pause-overlay__icon-button img {
+  width: 100%;
+}
+
+.pause-overlay__icon-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 6px;
 }
 
 /* HUD */

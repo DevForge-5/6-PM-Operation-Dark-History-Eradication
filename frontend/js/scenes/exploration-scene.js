@@ -14,6 +14,7 @@ export function createExplorationScene({ root, config, session, goTo }) {
   let node = null;
   let controller = null;
   let hud = null;
+  let isMuted = false;
 
   function setPaused(isPaused) {
     controller.setPaused(isPaused);
@@ -27,6 +28,17 @@ export function createExplorationScene({ root, config, session, goTo }) {
 
     event.preventDefault();
     setPaused(!controller.state.isPaused);
+  }
+
+  function toggleSound() {
+    isMuted = !isMuted;
+    const button = node.querySelector("#sound-toggle-button");
+    const icon = node.querySelector("#sound-toggle-icon");
+    button.setAttribute("aria-pressed", String(isMuted));
+    button.setAttribute("aria-label", isMuted ? "사운드 켜기" : "사운드 끄기");
+    icon.src = isMuted
+      ? "./assets/images/PausedIMG/mute.png"
+      : "./assets/images/PausedIMG/speaker%201.png";
   }
 
   function mount() {
@@ -56,6 +68,7 @@ export function createExplorationScene({ root, config, session, goTo }) {
       },
     });
     node.querySelector("#resume-button").addEventListener("click", () => setPaused(false));
+    node.querySelector("#sound-toggle-button").addEventListener("click", toggleSound);
     node.querySelector("#mobile-pause-button").addEventListener("click", () => setPaused(true));
     window.addEventListener("keydown", handlePauseKey);
     controller.start();
