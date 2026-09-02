@@ -1,6 +1,8 @@
 import { GameController } from "../game/game-controller.js";
 import { createHud } from "../ui/hud.js";
 import { ITEMS } from "../data/items.js";
+import { setGameTimerPaused } from "../game/game-timer.js";
+import { createOptionModal } from "../ui/option-modal.js";
 
 function showPickupToast(stage, text) {
   const toast = document.createElement("div");
@@ -18,6 +20,10 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
   let hud = null;
   let isMuted = false;
   let autosaveIntervalId = null;
+  let optionModal = null;
+  let isPauseMenuOpen = false;
+  let isForcePaused = false;
+  let isSettingsOpen = false;
 
   function persistPosition() {
     persist?.({
@@ -29,9 +35,38 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     });
   }
 
-  function setPaused(isPaused) {
-    controller.setPaused(isPaused);
-    node.querySelector("#pause-overlay").hidden = !isPaused;
+  function syncPauseState() {
+    const shouldPauseGame = isPauseMenuOpen || isForcePaused || isSettingsOpen;
+    controller.setPaused(shouldPauseGame);
+    setGameTimerPaused(shouldPauseGame);
+    node.querySelector("#pause-overlay").hidden = !isPauseMenuOpen;
+  }
+
+  function setPauseMenuOpen(isOpen) {
+    isPauseMenuOpen = isOpen;
+    syncPauseState();
+    if (isOpen) {
+      node.querySelector("#resume-button").focus();
+    }
+  }
+
+  function openOptions() {
+    isPauseMenuOpen = false;
+    isSettingsOpen = true;
+    syncPauseState();
+    optionModal = createOptionModal({
+      root: node.querySelector(".game-stage"),
+      onClose: closeOptions,
+      onRestart: () => goTo("story"),
+    });
+  }
+
+  function closeOptions() {
+    optionModal?.destroy();
+    optionModal = null;
+    isSettingsOpen = false;
+    isPauseMenuOpen = true;
+    syncPauseState();
   }
 
   function handlePauseKey(event) {
@@ -40,7 +75,10 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     }
 
     event.preventDefault();
-    setPaused(!controller.state.isPaused);
+    if (isSettingsOpen) {
+      return;
+    }
+    setPauseMenuOpen(!isPauseMenuOpen);
   }
 
   function toggleSound() {
@@ -85,9 +123,16 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
         showPickupToast(stage, `${ITEMS[itemId]?.name ?? itemId} 획득!`);
       },
     });
-    node.querySelector("#resume-button").addEventListener("click", () => setPaused(false));
+    const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
+    forcePauseCheckbox.addEventListener("change", () => {
+      isForcePaused = forcePauseCheckbox.checked;
+      syncPauseState();
+    });
+    node.querySelector("#resume-button").addEventListener("click", () => setPauseMenuOpen(false));
     node.querySelector("#sound-toggle-button").addEventListener("click", toggleSound);
-    node.querySelector("#mobile-pause-button").addEventListener("click", () => setPaused(true));
+    node.querySelector("#home-button").addEventListener("click", () => goTo("title"));
+    node.querySelector("#pause-option-button").addEventListener("click", openOptions);
+    node.querySelector("#mobile-pause-button").addEventListener("click", () => setPauseMenuOpen(true));
     window.addEventListener("keydown", handlePauseKey);
     controller.start();
     autosaveIntervalId = window.setInterval(persistPosition, POSITION_AUTOSAVE_INTERVAL_MS);
@@ -99,6 +144,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       autosaveIntervalId = null;
     }
     window.removeEventListener("keydown", handlePauseKey);
+    optionModal?.destroy();
+    optionModal = null;
+    setGameTimerPaused(false);
     controller?.destroy();
     controller = null;
     hud?.destroy();

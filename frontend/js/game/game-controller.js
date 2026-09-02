@@ -231,6 +231,9 @@ export class GameController {
     }
 
     event.preventDefault();
+    if (this.state.isPaused) {
+      return;
+    }
     setDirection(this.state.input, "keyboard", direction, true);
   }
 
@@ -246,6 +249,9 @@ export class GameController {
 
   handlePointerDown(event, button) {
     event.preventDefault();
+    if (this.state.isPaused) {
+      return;
+    }
     const direction = button.dataset.direction;
     this.pointerDirections.set(event.pointerId, direction);
     button.setPointerCapture(event.pointerId);
@@ -313,9 +319,21 @@ export class GameController {
   }
 
   setPaused(isPaused) {
+    if (this.state.isPaused === isPaused) {
+      return;
+    }
+
     this.state.isPaused = isPaused;
+    this.canvas.dataset.paused = String(isPaused);
     this.clearAllInput();
     this.previousTimestamp = null;
+
+    if (isPaused && this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    } else if (!isPaused && this.state.isRunning && this.animationFrameId === null) {
+      this.animationFrameId = requestAnimationFrame(this.tick);
+    }
   }
 
   prepareMapCollision() {
@@ -570,12 +588,12 @@ export class GameController {
   }
 
   tick(timestamp) {
+    this.animationFrameId = null;
     if (!this.state.isRunning) {
       return;
     }
 
     if (this.state.isPaused) {
-      this.animationFrameId = requestAnimationFrame(this.tick);
       return;
     }
 

@@ -85,6 +85,9 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     applyHpDelta(session.stats, outcome.hpDelta ?? 0);
     applyCringeDelta(session.stats, outcome.cringeDelta ?? 0);
     advanceTime(session.stats, outcome.minutesDelta ?? 0);
+    if (outcome.endingId) {
+      session.selectedEndingId = outcome.endingId;
+    }
     session.clearedEvents.add(event.id);
     hud.update(session.stats);
 
@@ -111,7 +114,12 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
   }
 
   function finishBattle() {
-    if (isHpDepleted(session.stats) || isCringeMaxed(session.stats) || isTimeUp(session.stats)) {
+    if (
+      session.selectedEndingId
+      || isHpDepleted(session.stats)
+      || isCringeMaxed(session.stats)
+      || isTimeUp(session.stats)
+    ) {
       goTo("ending");
     } else {
       goTo("exploration", payload?.player ? { player: payload.player } : undefined);
