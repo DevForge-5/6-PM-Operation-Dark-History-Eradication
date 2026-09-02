@@ -55,17 +55,17 @@
               <span>멈추기</span>
             </label>
             <div class="pause-overlay__actions">
-              <button id="resume-button" class="pause-overlay__action" type="button">
+              <button id="resume-button" class="pause-overlay__action" type="button" data-sound="resume_game">
                 <span aria-hidden="true">▶</span> 재개
               </button>
-              <button id="home-button" class="pause-overlay__action" type="button">
+              <button id="home-button" class="pause-overlay__action" type="button" data-sound="go_home">
                 <span aria-hidden="true">⌂</span> 홈으로
               </button>
             </div>
             <button id="sound-toggle-button" class="pause-overlay__sound" type="button" aria-label="사운드 끄기" aria-pressed="false">
               <img id="sound-toggle-icon" src="./assets/images/PausedIMG/speaker%201.png" alt="">
             </button>
-            <button id="pause-option-button" class="pause-overlay__option" type="button" aria-label="설정 열기">⚙</button>
+            <button id="pause-option-button" class="pause-overlay__option" type="button" data-sound="option_open" aria-label="설정 열기">⚙</button>
           </section>
 
           <section id="death-overlay" class="death-overlay" aria-label="게임 오버" hidden>

@@ -1,5 +1,8 @@
+import { audioManager } from "../audio/audio-manager.js";
+
 export function runQte({ root, durationSeconds = 3, targetPresses = 8 }) {
   return new Promise((resolve) => {
+    audioManager.playSfx("qte_start");
     const node = document.createElement("div");
     node.className = "qte-overlay";
     node.innerHTML = `
@@ -27,6 +30,7 @@ export function runQte({ root, durationSeconds = 3, targetPresses = 8 }) {
       window.removeEventListener("keydown", handleKeyDown);
       cancelAnimationFrame(frameId);
       node.remove();
+      audioManager.playSfx(success ? "qte_success" : "qte_fail");
       resolve(success);
     }
 

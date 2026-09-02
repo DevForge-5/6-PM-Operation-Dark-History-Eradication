@@ -24,9 +24,9 @@ export function createTitleScene({ root, goTo }) {
         >
       </h1>
       <ul class="title-scene__menu">
-        <li><button type="button" class="title-scene__menu-button" data-action="start">시작</button></li>
-        <li><button type="button" class="title-scene__menu-button" data-action="option">설정</button></li>
-        <li><button type="button" class="title-scene__menu-button" data-action="exit">순위표</button></li>
+        <li><button type="button" class="title-scene__menu-button" data-action="start" data-sound="start_game">시작</button></li>
+        <li><button type="button" class="title-scene__menu-button" data-action="option" data-sound="option_open">설정</button></li>
+        <li><button type="button" class="title-scene__menu-button" data-action="exit" data-sound="leaderboard_open">순위표</button></li>
       </ul>
     `;
     root.appendChild(node);

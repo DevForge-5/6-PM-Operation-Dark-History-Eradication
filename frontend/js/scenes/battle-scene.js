@@ -11,6 +11,7 @@ import {
   isHpDepleted,
   isTimeUp,
 } from "../game/game-state.js";
+import { audioManager } from "../audio/audio-manager.js";
 
 export function createBattleScene({ root, session, payload, goTo, persist }) {
   const event = EVENTS[payload?.eventId] ?? EVENTS.hallwayShadow;
@@ -25,6 +26,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     node.className = "scene battle-scene";
     node.setAttribute("aria-label", event.title);
     root.appendChild(node);
+    audioManager.playSfx(event.id === "hallwayShadow" ? "boss_appear" : "warning");
 
     hud = createHud({ root: node, stats: session.stats });
 
@@ -85,6 +87,9 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     applyHpDelta(session.stats, outcome.hpDelta ?? 0);
     applyCringeDelta(session.stats, outcome.cringeDelta ?? 0);
     advanceTime(session.stats, outcome.minutesDelta ?? 0);
+    if ((outcome.hpDelta ?? 0) < 0) {
+      audioManager.playSfx("damage");
+    }
     if (outcome.endingId) {
       session.selectedEndingId = outcome.endingId;
     }
@@ -92,6 +97,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     hud.update(session.stats);
 
     if ((outcome.cringeDelta ?? 0) > 0) {
+      audioManager.playSfx("cringe_up");
       triggerCringeFeedback();
     }
 
