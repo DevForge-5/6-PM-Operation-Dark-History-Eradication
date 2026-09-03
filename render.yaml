@@ -12,7 +12,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
-    healthCheckPath: /api/ranks
+    healthCheckPath: /api/rankings/ending1
     envVars:
       - key: DB_HOST
         fromDatabase:

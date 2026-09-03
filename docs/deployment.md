@@ -30,7 +30,7 @@ DB 연결 정보(`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`)�
 브라우저나 터미널에서 방금 복사한 URL로 확인합니다.
 
 ```
-curl https://sixpm-backend-XXXX.onrender.com/api/ranks
+curl https://sixpm-backend-XXXX.onrender.com/api/rankings/ending1
 ```
 
 `[]` (빈 배열)이 나오면 DB 연결과 서버 기동이 정상입니다.
