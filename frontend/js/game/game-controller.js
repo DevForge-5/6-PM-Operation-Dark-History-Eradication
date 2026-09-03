@@ -8,6 +8,8 @@ import {
   setDirection,
 } from "./game-state.js";
 
+const CAMERA_SMOOTHING_TIME_CONSTANT = 0.2;
+
 const KEY_DIRECTIONS = Object.freeze({
   ArrowUp: "up",
   KeyW: "up",
@@ -188,6 +190,7 @@ export class GameController {
     onPrincipalStateChange,
     onDefeatAnimationEnd,
     onHazardTriggered,
+    onComputerInteract,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -227,6 +230,9 @@ export class GameController {
     this.onPrincipalStateChange = onPrincipalStateChange;
     this.onDefeatAnimationEnd = onDefeatAnimationEnd;
     this.onHazardTriggered = onHazardTriggered;
+    this.onComputerInteract = onComputerInteract;
+    this.puzzleSolved = Boolean(triggeredHazardIds?.has("officePuzzleSolved"));
+    this.isNearComputer = false;
     this.triggeredEncounterId = null;
     this.goalReached = false;
     this.viewport = { ...config.canvas };
@@ -246,6 +252,7 @@ export class GameController {
     this.isInPrincipalDanger = false;
     this.isInOffice = false;
     this.officeRevealProgress = 0;
+    this.smoothCamera = null;
     this.principalElapsedSeconds = 0;
     this.principalState = "seated";
     const vaseAttackAlreadyTriggered = Boolean(triggeredHazardIds?.has("officeVaseAttack"));
@@ -596,6 +603,33 @@ export class GameController {
     this.onHazardTriggered?.("officeVaseAttack");
   }
 
+  setPuzzleSolved() {
+    if (this.puzzleSolved) {
+      return;
+    }
+
+    this.puzzleSolved = true;
+    this.onHazardTriggered?.("officePuzzleSolved");
+  }
+
+  updateComputerInteraction() {
+    if (this.puzzleSolved) {
+      this.isNearComputer = false;
+      return;
+    }
+
+    const computer = this.config.computer;
+    const computerBox = { x: computer.x, y: computer.y, width: computer.size, height: computer.size };
+    const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
+    const isOverlapping = rectanglesOverlap(playerBox, computerBox);
+
+    if (isOverlapping && !this.isNearComputer) {
+      this.onComputerInteract?.();
+    }
+
+    this.isNearComputer = isOverlapping;
+  }
+
   launchVaseAttack() {
     const attack = this.config.office.vaseAttack;
     const sourceIndex = attack.sourceVaseIndexes[this.vaseAttack.nextShot];
@@ -690,7 +724,7 @@ export class GameController {
     }
 
     const playerBox = this.getPlayerCollisionBox(x, y);
-    if (rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
+    if (!this.puzzleSolved && rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
       return false;
     }
     if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
@@ -738,6 +772,7 @@ export class GameController {
     this.state.player.y = nextPosition.y;
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
     this.updateOfficeHazards(deltaSeconds);
+    this.updateComputerInteraction();
 
     if (isMoving) {
       this.playerAnimationElapsed += deltaSeconds;
@@ -775,12 +810,29 @@ export class GameController {
         this.onPickup?.(pickup.itemId);
       }
     }
+
+    this.updateCamera(deltaSeconds);
+  }
+
+  updateCamera(deltaSeconds) {
+    const targetCamera = getCameraPosition(this.state.player, this.config, this.viewport);
+
+    if (!this.smoothCamera) {
+      this.smoothCamera = { zoom: targetCamera.zoom, x: targetCamera.x, y: targetCamera.y, room: targetCamera.room };
+      return;
+    }
+
+    const smoothing = 1 - Math.exp(-deltaSeconds / CAMERA_SMOOTHING_TIME_CONSTANT);
+    this.smoothCamera.zoom += (targetCamera.zoom - this.smoothCamera.zoom) * smoothing;
+    this.smoothCamera.x += (targetCamera.x - this.smoothCamera.x) * smoothing;
+    this.smoothCamera.y += (targetCamera.y - this.smoothCamera.y) * smoothing;
+    this.smoothCamera.room = targetCamera.room;
   }
 
   render() {
     const { width, height } = this.viewport;
     const player = this.state.player;
-    const camera = getCameraPosition(player, this.config, this.viewport);
+    const camera = this.smoothCamera ?? getCameraPosition(player, this.config, this.viewport);
     const zoom = camera.zoom;
     const activeRoom = camera.room;
     const roomFogDisabled = Boolean(activeRoom?.disableFog);
@@ -891,7 +943,7 @@ export class GameController {
     }
 
     const barrier = this.config.barrier;
-    if (isVisible(barrier.x, barrier.y, barrier.width, barrier.height)) {
+    if (!this.puzzleSolved && isVisible(barrier.x, barrier.y, barrier.width, barrier.height)) {
       this.context.drawImage(
         this.images.barrier,
         toScreenX(barrier.x),
@@ -1002,6 +1054,8 @@ export class GameController {
   renderFogOfWar(toScreenX, toScreenY, playerCenterX, playerCenterY, zoom, opacity = 1) {
     const { width, height } = this.viewport;
     const screenRadius = this.visionRadius * zoom;
+    const visionHeight = screenRadius * 2;
+    const visionWidth = visionHeight * (16 / 9);
     const screenCenterX = toScreenX(playerCenterX);
     const screenCenterY = toScreenY(playerCenterY);
     const fogCtx = this.fogContext;
@@ -1016,10 +1070,10 @@ export class GameController {
     fogCtx.globalCompositeOperation = "destination-out";
     fogCtx.fillStyle = "rgba(0, 0, 0, 1)";
     fogCtx.fillRect(
-      screenCenterX - screenRadius,
-      screenCenterY - screenRadius,
-      screenRadius * 2,
-      screenRadius * 2,
+      screenCenterX - visionWidth / 2,
+      screenCenterY - visionHeight / 2,
+      visionWidth,
+      visionHeight,
     );
     fogCtx.restore();
 

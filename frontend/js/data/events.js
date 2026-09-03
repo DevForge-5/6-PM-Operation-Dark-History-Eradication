@@ -12,7 +12,7 @@ export const EVENTS = Object.freeze({
         label: "[QTE] 3초 내 타자 연타로 고함치기",
         type: "qte",
         onSuccess: { cringeDelta: -10, minutesDelta: 5, resultText: "기합으로 그림자를 밀어냈다!" },
-        onFail: { cringeDelta: 25, minutesDelta: 5, resultText: "타이밍을 놓쳐 정신 공격을 그대로 맞았다..." },
+        onFail: { cringeDelta: 25, minutesDelta: 5, retry: true, resultText: "타이밍을 놓쳐 정신 공격을 그대로 맞았다..." },
       },
       {
         id: "item",
@@ -25,7 +25,7 @@ export const EVENTS = Object.freeze({
         id: "counter",
         label: "[맞불] 동족인 척 중2병 대사 치기",
         type: "instant",
-        effect: { cringeDelta: 15, hpDelta: 0, minutesDelta: 10, resultText: "『...나도 왼팔이 아파온다.』 그림자가 주춤한다." },
+        effect: { cringeDelta: 25, hpDelta: 0, minutesDelta: 10, resultText: "『...나도 왼팔이 아파온다.』 그림자가 주춤한다." },
       },
       {
         id: "accept-history",
@@ -72,7 +72,7 @@ export const EVENTS = Object.freeze({
         label: "[QTE] 박자에 맞춰 Mute 파장 쏘기",
         type: "qte",
         onSuccess: { cringeDelta: -15, minutesDelta: 5, resultText: "박자에 맞춰 정확히 뮤트시켰다!" },
-        onFail: { cringeDelta: 20, minutesDelta: 5, resultText: "박자를 놓쳐 하울링을 그대로 들었다..." },
+        onFail: { cringeDelta: 20, minutesDelta: 5, retry: true, resultText: "박자를 놓쳐 하울링을 그대로 들었다..." },
       },
     ],
   },
