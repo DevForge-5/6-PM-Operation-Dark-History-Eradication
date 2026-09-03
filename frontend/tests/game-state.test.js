@@ -106,6 +106,24 @@ test("교장 확인 상태에서도 소파 앞 세이프 존은 피해를 막는
   assert(controller.principalState === "seated", "교무실을 나가도 교장 상태가 초기화되지 않았습니다.");
 });
 
+test("음악실로 이어지는 계단 위쪽은 교장실로 인식되지 않는다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+
+  // eastHall(음악실) 진입부의 실제 맵 좌표. office.bounds가 실제 교장실
+  // 바닥보다 아래로 넓게 잡히면 여기가 교장실로 오인되어, 교장이 확인
+  // 상태가 됐을 때 세이프 존 밖으로 취급돼 즉시 피해를 입는다.
+  const footY = 650;
+  controller.state.player.x = 2600;
+  controller.state.player.y = footY - GAME_CONFIG.player.size + GAME_CONFIG.player.footInsetY;
+  controller.updatePrincipal(0.016);
+
+  assert(!controller.isInOffice, "음악실로 이어지는 계단 위쪽이 교장실로 인식됩니다.");
+});
+
 test("HP가 0이 되면 피해 피드백과 사망 처리를 한 번만 호출한다", () => {
   let damageCount = 0;
   let deathCount = 0;
