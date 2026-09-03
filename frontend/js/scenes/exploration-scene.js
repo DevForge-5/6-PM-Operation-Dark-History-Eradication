@@ -1,7 +1,7 @@
 import { GameController } from "../game/game-controller.js";
 import { createHud } from "../ui/hud.js";
 import { ITEMS } from "../data/items.js";
-import { setGameTimerPaused } from "../game/game-timer.js";
+import { setGameTimerPaused, startGameTimer } from "../game/game-timer.js";
 import { createOptionModal } from "../ui/option-modal.js";
 import { audioManager } from "../audio/audio-manager.js";
 
@@ -15,7 +15,7 @@ function showPickupToast(stage, text) {
 
 const POSITION_AUTOSAVE_INTERVAL_MS = 1000;
 
-export function createExplorationScene({ root, config, session, payload, goTo, persist }) {
+export function createExplorationScene({ root, config, session, payload, goTo, startRun, persist }) {
   let node = null;
   let controller = null;
   let hud = null;
@@ -56,6 +56,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
   }
 
   function setPauseMenuOpen(isOpen) {
+    if (isOpen && controller?.isInputLocked) {
+      return;
+    }
     if (isOpen && !isPauseMenuOpen) {
       audioManager.playSfx("pause_open");
     }
@@ -73,7 +76,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     optionModal = createOptionModal({
       root: node.querySelector(".game-stage"),
       onClose: closeOptions,
-      onRestart: () => goTo("story"),
+      onRestart: () => startRun({ preservePlayerName: true }),
     });
   }
 
@@ -91,7 +94,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     }
 
     event.preventDefault();
-    if (isSettingsOpen) {
+    if (isSettingsOpen || controller?.isInputLocked) {
       return;
     }
     setPauseMenuOpen(!isPauseMenuOpen);
@@ -183,6 +186,18 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       collectedItemIds: session.collectedPickups,
       triggeredHazardIds: session.triggeredHazards,
       defeatedEncounterId: payload?.defeatedEncounterId,
+      playIntroReveal: Boolean(payload?.playIntroReveal),
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      onReady: () => {
+        if (payload?.playIntroReveal) {
+          startGameTimer();
+        }
+      },
+      onIntroRevealEnd: () => {
+        if (payload?.playIntroReveal) {
+          persist?.({ playIntroReveal: false });
+        }
+      },
       onFrame: (state) => {
         hud.update(session.stats);
         const { x, y } = state.player;
@@ -229,10 +244,14 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     });
     node.querySelector("#resume-button").addEventListener("click", () => setPauseMenuOpen(false));
     node.querySelector("#sound-toggle-button").addEventListener("click", toggleSound);
-    node.querySelector("#home-button").addEventListener("click", () => goTo("title"));
+    node.querySelector("#home-button").addEventListener("click", () => goTo("title", { preservePlayerName: true }));
     node.querySelector("#pause-option-button").addEventListener("click", openOptions);
-    node.querySelector("#mobile-pause-button").addEventListener("click", () => setPauseMenuOpen(true));
-    node.querySelector("#death-restart-button").addEventListener("click", () => goTo("story"));
+    node.querySelector("#mobile-pause-button").addEventListener("click", () => {
+      if (!controller.isInputLocked) {
+        setPauseMenuOpen(true);
+      }
+    });
+    node.querySelector("#death-restart-button").addEventListener("click", () => startRun({ preservePlayerName: true }));
     node.querySelector("#death-home-button").addEventListener("click", () => goTo("title"));
     window.addEventListener("keydown", handlePauseKey);
     controller.start();

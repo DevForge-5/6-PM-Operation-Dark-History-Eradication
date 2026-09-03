@@ -1,7 +1,7 @@
 import { GAME_CONFIG } from "./config.js";
 import { createStats } from "./game/game-state.js";
 import { clearProgress, loadProgress, saveProgress } from "./game/session-storage.js";
-import { getClearTime, startGameTimer, stopGameTimer } from "./game/game-timer.js";
+import { getClearTime, stopGameTimer } from "./game/game-timer.js";
 import { createTitleScene } from "./scenes/title-scene.js";
 import { createStoryScene } from "./scenes/story-scene.js";
 import { createExplorationScene } from "./scenes/exploration-scene.js";
@@ -31,11 +31,27 @@ class SceneManager {
       triggeredHazards: new Set(),
       selectedEndingId: null,
       clearTimeMs: null,
+      playerName: null,
     };
     this.currentScene = null;
     this.currentSceneName = null;
     this.currentPayload = undefined;
     this.persist = this.persist.bind(this);
+    this.startRun = this.startRun.bind(this);
+  }
+
+  startRun({ preservePlayerName = false } = {}) {
+    const playerName = preservePlayerName ? this.session.playerName : null;
+    this.session.stats = createStats(this.config);
+    this.session.clearedEvents = new Set();
+    this.session.inventory = new Set();
+    this.session.collectedPickups = new Set();
+    this.session.triggeredHazards = new Set();
+    this.session.selectedEndingId = null;
+    this.session.clearTimeMs = null;
+    this.session.playerName = playerName;
+    stopGameTimer();
+    this.goTo("story", { phase: "dialog", index: 0 });
   }
 
   persist(payloadPatch) {
@@ -52,17 +68,6 @@ class SceneManager {
     const createScene = SCENE_FACTORIES[name];
     if (!createScene) {
       throw new Error(`알 수 없는 씬입니다: ${name}`);
-    }
-
-    if (name === "story") {
-      this.session.stats = createStats(this.config);
-      this.session.clearedEvents = new Set();
-      this.session.inventory = new Set();
-      this.session.collectedPickups = new Set();
-      this.session.triggeredHazards = new Set();
-      this.session.selectedEndingId = null;
-      this.session.clearTimeMs = null;
-      startGameTimer();
     }
 
     if (name === "title") {
@@ -82,6 +87,7 @@ class SceneManager {
       session: this.session,
       payload,
       goTo: (nextName, nextPayload) => this.goTo(nextName, nextPayload),
+      startRun: this.startRun,
       persist: this.persist,
     });
     this.currentScene.mount();
@@ -109,6 +115,7 @@ if (savedProgress && savedProgress.scene && savedProgress.scene !== "title" && S
   sceneManager.session.inventory = new Set(savedProgress.inventory ?? []);
   sceneManager.session.collectedPickups = new Set(savedProgress.collectedPickups ?? []);
   sceneManager.session.triggeredHazards = new Set(savedProgress.triggeredHazards ?? []);
+  sceneManager.session.playerName = savedProgress.playerName ?? null;
   sceneManager.goTo(savedProgress.scene, savedProgress.payload ?? undefined);
 } else {
   sceneManager.goTo("title");

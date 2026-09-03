@@ -91,6 +91,7 @@ export function showEnding(endingId, data, { root, onRestart } = {}) {
   const rankForm = node.querySelector("[data-role='rank-form']");
   const rankStatus = node.querySelector("[data-role='rank-status']");
   const playerRank = node.querySelector("[data-role='player-rank']");
+  rankForm.elements.nickname.value = data.playerName ?? "";
   renderRanking(endingId, rankingList);
 
   function setStatus(message, isError = false) {
@@ -146,7 +147,7 @@ export function showEnding(endingId, data, { root, onRestart } = {}) {
   return { node, destroy };
 }
 
-export function createResultScreen({ root, ending, stats, clearTimeMs, onRestart }) {
+export function createResultScreen({ root, ending, stats, clearTimeMs, playerName, onRestart }) {
   return showEnding(
     ending.id,
     {
@@ -155,6 +156,7 @@ export function createResultScreen({ root, ending, stats, clearTimeMs, onRestart
       hpMax: stats.hpMax,
       cringe: stats.cringe,
       cringeMax: stats.cringeMax,
+      playerName,
     },
     { root, onRestart },
   );

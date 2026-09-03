@@ -11,6 +11,8 @@ export const GAME_CONFIG = Object.freeze({
   maxDeltaSeconds: 0.05,
   camera: Object.freeze({
     zoom: 2.5,
+    introZoom: 3.25,
+    introRevealSeconds: 1.8,
   }),
   rooms: Object.freeze([
     Object.freeze({ id: "serverRoom", x: 64, y: 384, width: 896, height: 768, margin: 128, framePadding: 128 }),

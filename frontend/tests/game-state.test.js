@@ -22,6 +22,8 @@ import { ENDINGS, resolveEnding } from "../js/data/endings.js";
 import { EVENTS } from "../js/data/events.js";
 import { ENDING_IDS, getRanking, saveRanking } from "../js/api/speedrun-ranking.js";
 import { renderRanking } from "../js/ui/result-screen.js";
+import { createStoryScene, normalizePlayerName } from "../js/scenes/story-scene.js?test=story-intro-restart";
+import { loadProgress, saveProgress } from "../js/game/session-storage.js";
 import {
   getAudioSettings,
   registerAudio,
@@ -257,6 +259,119 @@ test("카메라가 브라우저 화면 크기를 기준으로 계산된다", () 
   const state = createGameState(GAME_CONFIG);
   const camera = getCameraPosition(state.player, GAME_CONFIG, { width: 1280, height: 800 });
   assert(camera.x === 1312 && camera.y === 64, "브라우저 크기가 카메라에 반영되지 않았습니다.");
+});
+
+test("오프닝 카메라는 지정한 줌을 사용한다", () => {
+  const state = createGameState(GAME_CONFIG);
+  const camera = getCameraPosition(
+    state.player,
+    GAME_CONFIG,
+    GAME_CONFIG.canvas,
+    GAME_CONFIG.camera.introZoom,
+  );
+  assert(camera.zoom === GAME_CONFIG.camera.introZoom, "오프닝 카메라 줌이 적용되지 않았습니다.");
+});
+
+test("오프닝 연출 중 입력을 잠그고 1.8초 후 해제한다", () => {
+  let revealEndCount = 0;
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    playIntroReveal: true,
+    onIntroRevealEnd: () => {
+      revealEndCount += 1;
+    },
+  });
+  const startX = controller.state.player.x;
+
+  setDirection(controller.state.input, "keyboard", "right", true);
+  controller.update(GAME_CONFIG.camera.introRevealSeconds / 2);
+  assert(controller.isInputLocked, "연출 중 입력 잠금이 너무 일찍 해제됐습니다.");
+  assert(nearlyEqual(controller.introRevealProgress, 0.5), "오프닝 진행도가 올바르지 않습니다.");
+  assert(controller.state.player.x === startX, "연출 중 플레이어가 움직였습니다.");
+
+  controller.update(GAME_CONFIG.camera.introRevealSeconds / 2);
+  assert(!controller.isInputLocked, "연출 완료 후 입력 잠금이 해제되지 않았습니다.");
+  assert(controller.introRevealProgress === 1, "오프닝이 최종 상태에 도달하지 않았습니다.");
+  assert(revealEndCount === 1, "오프닝 완료 콜백이 정확히 한 번 호출되지 않았습니다.");
+});
+
+test("모션 감소 환경에서는 오프닝을 즉시 최종 상태로 만든다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    playIntroReveal: true,
+    reducedMotion: true,
+  });
+  assert(controller.introRevealProgress === 1, "모션 감소 환경의 시야가 즉시 열리지 않았습니다.");
+  assert(!controller.isIntroRevealActive, "모션 감소 환경에서 오프닝 애니메이션이 남았습니다.");
+});
+
+test("플레이어 이름은 앞뒤 공백을 제거하고 유니코드 12자로 정규화된다", () => {
+  assert(normalizePlayerName("  이현🙂  ") === "이현🙂", "한글과 이모지 이름이 보존되지 않았습니다.");
+  assert(Array.from(normalizePlayerName("가나다라마바사아자차카타파")).length === 12, "이름이 12자로 제한되지 않았습니다.");
+});
+
+test("진행 저장 데이터에 플레이어 이름이 포함된다", () => {
+  const previousProgress = loadProgress();
+  const session = {
+    stats: createStats(GAME_CONFIG),
+    clearedEvents: new Set(),
+    inventory: new Set(),
+    collectedPickups: new Set(),
+    triggeredHazards: new Set(),
+    playerName: "테스트요원",
+  };
+  saveProgress("story", { phase: "nickname", index: 7 }, session);
+  const saved = loadProgress();
+  assert(saved.playerName === "테스트요원", "플레이어 이름이 저장되지 않았습니다.");
+  assert(saved.payload.phase === "nickname" && saved.payload.index === 7, "스토리 단계가 정규화된 형태로 저장되지 않았습니다.");
+  if (previousProgress) {
+    sessionStorage.setItem("sixpm:progress", JSON.stringify(previousProgress));
+  } else {
+    sessionStorage.removeItem("sixpm:progress");
+  }
+});
+
+test("등록된 이름으로 재시작한 프롤로그를 스킵하면 닉네임 입력 없이 게임으로 이동한다", () => {
+  const root = document.createElement("div");
+  let destination = null;
+  const scene = createStoryScene({
+    root,
+    session: { playerName: "재시작검증" },
+    payload: { phase: "dialog", index: 0 },
+    persist: () => {},
+    goTo: (name, payload) => {
+      destination = { name, payload };
+    },
+  });
+
+  scene.mount();
+  root.querySelector(".story-scene__skip").click();
+
+  assert(root.querySelector(".story-name-form") === null, "등록된 이름이 있는데 닉네임 입력 화면이 표시됐습니다.");
+  assert(destination?.name === "exploration", "튜토리얼 스킵 후 게임 화면으로 이동하지 않았습니다.");
+  assert(destination?.payload?.playIntroReveal, "재시작 후 게임 진입 연출이 누락됐습니다.");
+  scene.unmount();
+});
+
+test("등록된 이름이 없으면 프롤로그 스킵 후 닉네임 입력을 표시한다", () => {
+  const root = document.createElement("div");
+  const scene = createStoryScene({
+    root,
+    session: { playerName: null },
+    payload: { phase: "dialog", index: 0 },
+    persist: () => {},
+    goTo: () => {},
+  });
+
+  scene.mount();
+  root.querySelector(".story-scene__skip").click();
+
+  assert(root.querySelector(".story-name-form") !== null, "첫 게임의 필수 닉네임 입력 화면이 표시되지 않았습니다.");
+  scene.unmount();
 });
 
 test("방이 화면보다 크면 벽+여백(framePadding)을 포함해 방 전체가 보이도록 축소되어 고정된다", () => {

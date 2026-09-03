@@ -33,7 +33,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     const phase = payload?.phase ?? "intro";
     if (phase === "result") {
       dialog = createDialogBox({ root: node });
-      dialog.show(payload.resultText ?? "");
+      dialog.show(payload.resultText ?? "", { playerName: session.playerName });
       dialog.setAdvanceHandler(finishBattle);
     } else if (phase === "choice") {
       choicePanel = createChoicePanel({
@@ -44,7 +44,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
       });
     } else {
       dialog = createDialogBox({ root: node });
-      dialog.show(event.intro[introIndex]);
+      dialog.show(event.intro[introIndex], { playerName: session.playerName });
       dialog.setAdvanceHandler(advanceIntro);
       persist?.({ eventId: event.id, phase: "intro", introIndex });
     }
@@ -53,7 +53,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
   function advanceIntro() {
     introIndex += 1;
     if (introIndex < event.intro.length) {
-      dialog.show(event.intro[introIndex]);
+      dialog.show(event.intro[introIndex], { playerName: session.playerName });
       persist?.({ phase: "intro", introIndex });
       return;
     }
@@ -102,7 +102,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     }
 
     dialog = createDialogBox({ root: node });
-    dialog.show(outcome.resultText);
+    dialog.show(outcome.resultText, { playerName: session.playerName });
     dialog.setAdvanceHandler(finishBattle);
     persist?.({ phase: "result", resultText: outcome.resultText });
   }

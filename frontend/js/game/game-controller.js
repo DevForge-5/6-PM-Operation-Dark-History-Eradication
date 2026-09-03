@@ -111,7 +111,7 @@ function clampCameraAxis(target, visibleSize, min, max) {
   return clampToRange(target, min, max - visibleSize);
 }
 
-export function getCameraPosition(player, config, viewport = config.canvas) {
+export function getCameraPosition(player, config, viewport = config.canvas, zoomOverride = config.camera.zoom) {
   const centerX = player.x + player.size / 2;
   const centerY = player.y + player.size / 2;
   const footX = player.x + player.size / 2;
@@ -121,7 +121,7 @@ export function getCameraPosition(player, config, viewport = config.canvas) {
     ? getFrameBounds(room)
     : { minX: 0, minY: 0, maxX: config.world.width, maxY: config.world.height };
 
-  let zoom = config.camera.zoom;
+  let zoom = zoomOverride;
   if (room) {
     const fitZoomX = viewport.width / (bounds.maxX - bounds.minX);
     const fitZoomY = viewport.height / (bounds.maxY - bounds.minY);
@@ -185,8 +185,12 @@ export class GameController {
     onPickup,
     onDamage,
     onPlayerDeath,
+    onReady,
+    onIntroRevealEnd,
     onPrincipalStateChange,
     onDefeatAnimationEnd,
+    playIntroReveal = false,
+    reducedMotion = false,
     onHazardTriggered,
   }) {
     this.canvas = canvas;
@@ -224,6 +228,8 @@ export class GameController {
     this.onReachGoal = onReachGoal;
     this.onDamage = onDamage;
     this.onPlayerDeath = onPlayerDeath;
+    this.onReady = onReady;
+    this.onIntroRevealEnd = onIntroRevealEnd;
     this.onPrincipalStateChange = onPrincipalStateChange;
     this.onDefeatAnimationEnd = onDefeatAnimationEnd;
     this.onHazardTriggered = onHazardTriggered;
@@ -262,6 +268,11 @@ export class GameController {
     this.damageFeedbackCooldown = 0;
     this.playerDefeated = false;
     this.visionRadius = config.player.size * 2.5;
+    this.shouldPlayIntroReveal = Boolean(playIntroReveal);
+    this.isInputLocked = this.shouldPlayIntroReveal;
+    this.isIntroRevealActive = this.shouldPlayIntroReveal && !reducedMotion;
+    this.introRevealElapsed = 0;
+    this.introRevealProgress = this.shouldPlayIntroReveal && !reducedMotion ? 0 : 1;
     this.fogCanvas = document.createElement("canvas");
     this.fogContext = this.fogCanvas.getContext("2d");
 
@@ -317,6 +328,11 @@ export class GameController {
       this.prepareMapCollision();
       this.loadingMessage.hidden = true;
       this.state.isRunning = true;
+      this.onReady?.();
+      if (this.shouldPlayIntroReveal && !this.isIntroRevealActive) {
+        this.isInputLocked = false;
+        this.onIntroRevealEnd?.();
+      }
       this.canvas.focus({ preventScroll: true });
       this.animationFrameId = requestAnimationFrame(this.tick);
     } catch (error) {
@@ -365,7 +381,7 @@ export class GameController {
     }
 
     event.preventDefault();
-    if (this.state.isPaused) {
+    if (this.state.isPaused || this.isInputLocked) {
       return;
     }
     setDirection(this.state.input, "keyboard", direction, true);
@@ -383,7 +399,7 @@ export class GameController {
 
   handlePointerDown(event, button) {
     event.preventDefault();
-    if (this.state.isPaused) {
+    if (this.state.isPaused || this.isInputLocked) {
       return;
     }
     const direction = button.dataset.direction;
@@ -715,6 +731,18 @@ export class GameController {
   }
 
   update(deltaSeconds) {
+    if (this.isIntroRevealActive) {
+      this.introRevealElapsed += deltaSeconds;
+      const duration = this.config.camera.introRevealSeconds;
+      this.introRevealProgress = Math.min(1, this.introRevealElapsed / duration);
+      if (this.introRevealProgress >= 1) {
+        this.isIntroRevealActive = false;
+        this.isInputLocked = false;
+        this.onIntroRevealEnd?.();
+      }
+      return;
+    }
+
     this.damageFeedbackCooldown = Math.max(0, this.damageFeedbackCooldown - deltaSeconds);
     if (this.defeatAnimation) {
       this.defeatAnimation.elapsedSeconds += deltaSeconds;
@@ -780,11 +808,15 @@ export class GameController {
   render() {
     const { width, height } = this.viewport;
     const player = this.state.player;
-    const camera = getCameraPosition(player, this.config, this.viewport);
+    const introEasedProgress = 1 - ((1 - this.introRevealProgress) ** 3);
+    const introZoom = this.config.camera.introZoom
+      + (this.config.camera.zoom - this.config.camera.introZoom) * introEasedProgress;
+    const camera = getCameraPosition(player, this.config, this.viewport, introZoom);
     const zoom = camera.zoom;
     const activeRoom = camera.room;
-    const roomFogDisabled = Boolean(activeRoom?.disableFog);
-    const fogOpacity = 1 - this.officeRevealProgress;
+    const isIntroRevealing = this.introRevealProgress < 1;
+    const roomFogDisabled = !isIntroRevealing && Boolean(activeRoom?.disableFog);
+    const fogOpacity = isIntroRevealing ? 1 : 1 - this.officeRevealProgress;
     const isVisible = (x, y, w, h) => {
       if (this.officeRevealProgress > 0) {
         return rectanglesOverlap(this.config.office.bounds, { x, y, width: w, height: h });
@@ -990,6 +1022,7 @@ export class GameController {
         player.y + player.size / 2,
         zoom,
         fogOpacity,
+        isIntroRevealing ? introEasedProgress : 1,
       );
     }
 
@@ -997,15 +1030,18 @@ export class GameController {
     this.canvas.dataset.playerY = player.y.toFixed(2);
     this.canvas.dataset.cameraX = camera.x.toFixed(2);
     this.canvas.dataset.cameraY = camera.y.toFixed(2);
+    this.canvas.dataset.cameraZoom = camera.zoom.toFixed(2);
+    this.canvas.dataset.introRevealProgress = this.introRevealProgress.toFixed(3);
   }
 
-  renderFogOfWar(toScreenX, toScreenY, playerCenterX, playerCenterY, zoom, opacity = 1) {
+  renderFogOfWar(toScreenX, toScreenY, playerCenterX, playerCenterY, zoom, opacity = 1, radiusScale = 1) {
     const { width, height } = this.viewport;
-    const screenRadius = this.visionRadius * zoom;
+    const screenRadius = this.visionRadius * zoom * radiusScale;
     const screenCenterX = toScreenX(playerCenterX);
     const screenCenterY = toScreenY(playerCenterY);
     const fogCtx = this.fogContext;
-    const fogColor = `rgba(4, 6, 8, ${0.9 * opacity})`;
+    const fogAlpha = opacity * (1 - 0.1 * radiusScale);
+    const fogColor = `rgba(4, 6, 8, ${fogAlpha})`;
 
     fogCtx.clearRect(0, 0, width, height);
     fogCtx.fillStyle = fogColor;

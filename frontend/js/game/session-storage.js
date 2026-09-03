@@ -10,6 +10,7 @@ export function saveProgress(sceneName, payload, session) {
       inventory: [...session.inventory],
       collectedPickups: [...session.collectedPickups],
       triggeredHazards: [...session.triggeredHazards],
+      playerName: session.playerName,
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {

@@ -44,14 +44,16 @@ export function createOptionModal({ root, onClose, onRestart }) {
           </div>
         </section>
       </div>
-      <button type="button" class="option-modal__restart" data-action="show-restart" data-sound="retry">다시하기</button>
-      <section class="option-modal__confirm" data-role="restart-confirm" aria-label="다시하기 확인" hidden>
-        <p>진행 상황을 초기화하고 처음부터 다시 시작할까요?</p>
-        <div>
-          <button type="button" data-action="cancel-restart">취소</button>
-          <button type="button" data-action="confirm-restart">확인</button>
-        </div>
-      </section>
+      ${onRestart ? `
+        <button type="button" class="option-modal__restart" data-action="show-restart" data-sound="retry">다시하기</button>
+        <section class="option-modal__confirm" data-role="restart-confirm" aria-label="다시하기 확인" hidden>
+          <p>진행 상황을 초기화하고 처음부터 다시 시작할까요?</p>
+          <div>
+            <button type="button" data-action="cancel-restart">취소</button>
+            <button type="button" data-action="confirm-restart">확인</button>
+          </div>
+        </section>
+      ` : ""}
     </div>
   `;
   root.appendChild(node);
@@ -111,7 +113,7 @@ export function createOptionModal({ root, onClose, onRestart }) {
     }
 
     if (action === "confirm-restart") {
-      onRestart();
+      onRestart?.();
       return;
     }
 

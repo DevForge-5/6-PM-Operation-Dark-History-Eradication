@@ -8,16 +8,32 @@ const INPUT_GUARD_MS = 250;
 export function createDialogBox({ root }) {
   const node = document.createElement("div");
   node.className = "dialog-box";
+  const speakerNode = document.createElement("strong");
+  const textNode = document.createElement("span");
+  const progressNode = document.createElement("span");
+  speakerNode.className = "dialog-box__speaker";
+  textNode.className = "dialog-box__text";
+  progressNode.className = "dialog-box__progress";
+  speakerNode.hidden = true;
+  progressNode.hidden = true;
+  node.append(speakerNode, textNode, progressNode);
   root.appendChild(node);
   let advanceHandler = null;
   const readyAt = performance.now() + INPUT_GUARD_MS;
 
-  function handleClick() {
+  function handleClick(event) {
+    if (!event.target.closest(".dialog-box")) {
+      return;
+    }
     advanceHandler?.();
   }
 
   function handleKeyDown(event) {
-    if (event.code !== "Space" || event.repeat || !advanceHandler) {
+    if (!["Space", "Enter"].includes(event.code) || event.repeat || !advanceHandler) {
+      return;
+    }
+
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement) {
       return;
     }
 
@@ -32,8 +48,13 @@ export function createDialogBox({ root }) {
   root.addEventListener("click", handleClick);
   window.addEventListener("keydown", handleKeyDown);
 
-  function show(text) {
-    node.textContent = text;
+  function show(text, { speaker, progress, playerName } = {}) {
+    const resolvedName = playerName || "신이현";
+    textNode.textContent = String(text ?? "").replaceAll("{playerName}", resolvedName);
+    speakerNode.textContent = speaker === "player" ? resolvedName : (speaker ?? "");
+    speakerNode.hidden = !speakerNode.textContent;
+    progressNode.textContent = progress ?? "";
+    progressNode.hidden = !progressNode.textContent;
   }
 
   function setAdvanceHandler(handler) {

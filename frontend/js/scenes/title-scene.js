@@ -1,9 +1,13 @@
 import { createOptionModal } from "../ui/option-modal.js";
 
-export function createTitleScene({ root, goTo }) {
+const START_FADE_MS = 550;
+
+export function createTitleScene({ root, goTo, startRun, payload }) {
   let node = null;
   let handleMenuClick = null;
   let optionModal = null;
+  let startTimerId = null;
+  let isStarting = false;
 
   function closeOption() {
     optionModal?.destroy();
@@ -28,6 +32,7 @@ export function createTitleScene({ root, goTo }) {
         <li><button type="button" class="title-scene__menu-button" data-action="option" data-sound="option_open">설정</button></li>
         <li><button type="button" class="title-scene__menu-button" data-action="exit" data-sound="leaderboard_open">순위표</button></li>
       </ul>
+      <div class="title-scene__fade" aria-hidden="true"></div>
     `;
     root.appendChild(node);
 
@@ -38,12 +43,21 @@ export function createTitleScene({ root, goTo }) {
       }
 
       if (button.dataset.action === "start") {
-        goTo("story");
+        if (isStarting) {
+          return;
+        }
+        isStarting = true;
+        node.classList.add("is-starting");
+        node.querySelectorAll("button").forEach((menuButton) => {
+          menuButton.disabled = true;
+        });
+        startTimerId = window.setTimeout(() => startRun({
+          preservePlayerName: Boolean(payload?.preservePlayerName),
+        }), START_FADE_MS);
       } else if (button.dataset.action === "option" && !optionModal) {
         optionModal = createOptionModal({
           root: node,
           onClose: closeOption,
-          onRestart: () => goTo("story"),
         });
       } else if (button.dataset.action === "exit") {
         goTo("leaderboard");
@@ -53,6 +67,10 @@ export function createTitleScene({ root, goTo }) {
   }
 
   function unmount() {
+    if (startTimerId !== null) {
+      window.clearTimeout(startTimerId);
+      startTimerId = null;
+    }
     optionModal?.destroy();
     optionModal = null;
     node?.removeEventListener("click", handleMenuClick);

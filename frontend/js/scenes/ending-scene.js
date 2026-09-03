@@ -22,6 +22,7 @@ export function createEndingScene({ root, session, goTo }) {
       ending,
       stats: session.stats,
       clearTimeMs: session.clearTimeMs,
+      playerName: session.playerName,
       onRestart: () => goTo("title"),
     });
   }
