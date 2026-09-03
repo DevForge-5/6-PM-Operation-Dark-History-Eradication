@@ -27,7 +27,11 @@ function getRetreatPosition(player) {
 }
 
 export function createBattleScene({ root, session, payload, goTo, persist }) {
-  const event = EVENTS[payload?.eventId] ?? EVENTS.hallwayShadow;
+  // musicRoomSiren no longer routes here (it plays out in the exploration
+  // scene), so a stale save pointing at a choice-less event falls back rather
+  // than mounting an empty choice panel.
+  const requestedEvent = EVENTS[payload?.eventId];
+  const event = requestedEvent?.choices ? requestedEvent : EVENTS.hallwayShadow;
   let node = null;
   let hud = null;
   let dialog = null;

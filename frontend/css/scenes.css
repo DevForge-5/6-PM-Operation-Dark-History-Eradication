@@ -709,6 +709,82 @@
   color: #fff;
 }
 
+/* Siren boss fight HUD (in-world music-room fight) */
+.siren-boss-hud {
+  position: absolute;
+  top: clamp(10px, 2.5vh, 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: clamp(6px, 1.2vw, 11px) clamp(14px, 2.4vw, 22px);
+  border: 3px solid #4a3018;
+  border-radius: 12px;
+  background: rgb(20 8 8 / 82%);
+  pointer-events: none;
+  text-align: center;
+}
+
+/* The `hidden` attribute alone loses to the display rule above (same trap as
+   .death-overlay), so the scene's hidden toggle needs this to actually hide. */
+.siren-boss-hud[hidden] {
+  display: none;
+}
+
+.siren-boss-hud__round {
+  margin: 0;
+  color: #ffcf40;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 1.3vw, 13px);
+  text-shadow: 0 0 8px rgb(255 207 64 / 55%);
+}
+
+.siren-boss-hud__hp {
+  display: flex;
+  gap: 6px;
+}
+
+.siren-boss-hud__pip {
+  width: clamp(14px, 2vw, 20px);
+  aspect-ratio: 1;
+  border: 2px solid #ff6a6a;
+  border-radius: 3px;
+  background: #ff2e2e;
+  box-shadow: 0 0 10px rgb(255 46 46 / 60%);
+  transition: background-color 140ms steps(2, end);
+}
+
+.siren-boss-hud__pip.is-broken {
+  border-color: #5a3030;
+  background: #2a1414;
+  box-shadow: none;
+}
+
+.siren-boss-prompt {
+  position: absolute;
+  bottom: clamp(40px, 12vh, 110px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  margin: 0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: rgb(20 8 8 / 78%);
+  color: #fff;
+  font-family: "Galmuri11", sans-serif;
+  font-size: clamp(13px, 1.9vw, 20px);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.siren-boss-prompt.is-visible {
+  opacity: 1;
+  animation: siren-prompt-pulse 620ms ease-in-out infinite;
+}
+
 /* Puzzle terminal (computer minigame) */
 .puzzle-terminal {
   position: absolute;

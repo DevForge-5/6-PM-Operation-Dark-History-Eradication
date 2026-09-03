@@ -49,6 +49,17 @@
             <p class="hazard-warning-overlay__text">장애물 주의</p>
           </div>
 
+          <!-- Siren boss fight status: pip count matches musicRoom.fight.sirenHp -->
+          <section id="siren-boss-hud" class="siren-boss-hud" aria-label="세이렌 보스전 상태" hidden>
+            <p class="siren-boss-hud__round">ROUND 1 / 6</p>
+            <div class="siren-boss-hud__hp" role="img" aria-label="세이렌 남은 체력">
+              <span class="siren-boss-hud__pip"></span>
+              <span class="siren-boss-hud__pip"></span>
+              <span class="siren-boss-hud__pip"></span>
+            </div>
+          </section>
+          <p id="siren-boss-prompt" class="siren-boss-prompt" role="status"></p>
+
           <div class="mobile-controls" aria-label="모바일 이동 조작">
             <button class="direction-button direction-button--up" type="button" data-direction="up" aria-label="위로 이동">▲</button>
             <button class="direction-button direction-button--left" type="button" data-direction="left" aria-label="왼쪽으로 이동">◀</button>

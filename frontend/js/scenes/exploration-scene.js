@@ -4,7 +4,14 @@ import { ITEMS } from "../data/items.js";
 import { setGameTimerPaused, startGameTimer } from "../game/game-timer.js";
 import { createOptionModal } from "../ui/option-modal.js";
 import { createPuzzleTerminal } from "../minigames/puzzle-terminal.js";
+import { createDialogBox } from "../ui/dialog.js";
+import { createChoicePanel } from "../ui/choice-panel.js";
+import { EVENTS } from "../data/events.js";
+import { advanceTime, applyCringeDelta, applyHpDelta } from "../game/game-state.js";
 import { audioManager } from "../audio/audio-manager.js";
+
+const SIREN_EVENT_ID = "musicRoomSiren";
+const SIREN_INTRO_HAZARD_ID = "musicRoomSirenIntro";
 
 function showPickupToast(stage, text) {
   const toast = document.createElement("div");
@@ -30,6 +37,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
   let isPuzzleOpen = false;
   let lastFootstepAt = 0;
   let lastPlayerPosition = null;
+  let sirenDialog = null;
+  let sirenChoicePanel = null;
+  let isSirenDialogueOpen = false;
 
   function persistPosition() {
     persist?.({
@@ -51,7 +61,11 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
   }
 
   function syncPauseState() {
-    const shouldPauseGame = isPauseMenuOpen || isForcePaused || isSettingsOpen || isPuzzleOpen;
+    const shouldPauseGame = isPauseMenuOpen
+      || isForcePaused
+      || isSettingsOpen
+      || isPuzzleOpen
+      || isSirenDialogueOpen;
     controller.setPaused(shouldPauseGame);
     setGameTimerPaused(shouldPauseGame);
     audioManager.setBgmPaused(shouldPauseGame);
@@ -117,7 +131,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     }
 
     event.preventDefault();
-    if (isSettingsOpen || isPuzzleOpen || controller?.isInputLocked) {
+    if (isSettingsOpen || isPuzzleOpen || isSirenDialogueOpen || controller?.isInputLocked) {
       return;
     }
     setPauseMenuOpen(!isPauseMenuOpen);
@@ -188,6 +202,152 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
 
     deathOverlay.hidden = false;
     deathOverlay.querySelector("#death-restart-button")?.focus();
+  }
+
+  // --- 음악실 세이렌 보스전 (in-world, see game/siren-fight.js) ---------------
+
+  function closeSirenDialogue() {
+    sirenChoicePanel?.destroy();
+    sirenChoicePanel = null;
+    sirenDialog?.destroy();
+    sirenDialog = null;
+    isSirenDialogueOpen = false;
+    syncPauseState();
+  }
+
+  function showSirenLines(lines, onDone) {
+    isSirenDialogueOpen = true;
+    syncPauseState();
+
+    sirenChoicePanel?.destroy();
+    sirenChoicePanel = null;
+    sirenDialog?.destroy();
+    sirenDialog = createDialogBox({ root: node.querySelector(".game-stage") });
+
+    let index = 0;
+    const showCurrent = () => {
+      sirenDialog.show(lines[index], {
+        speaker: EVENTS[SIREN_EVENT_ID].title,
+        progress: lines.length > 1 ? `${index + 1} / ${lines.length}` : undefined,
+        playerName: session.playerName,
+      });
+    };
+
+    sirenDialog.setAdvanceHandler(() => {
+      index += 1;
+      if (index < lines.length) {
+        showCurrent();
+        return;
+      }
+      onDone();
+    });
+    showCurrent();
+  }
+
+  function applySirenEffect(effect) {
+    if (!effect) {
+      return;
+    }
+    if (effect.hpDelta) {
+      applyHpDelta(session.stats, effect.hpDelta);
+      if (effect.hpDelta < 0) {
+        audioManager.playSfx("damage");
+        triggerDamageFeedback();
+      }
+    }
+    if (effect.cringeDelta) {
+      applyCringeDelta(session.stats, effect.cringeDelta);
+      if (effect.cringeDelta > 0) {
+        audioManager.playSfx("cringe_up");
+      }
+    }
+    if (effect.minutesDelta) {
+      advanceTime(session.stats, effect.minutesDelta);
+    }
+    hud.update(session.stats);
+  }
+
+  function updateSirenHud(snapshot) {
+    const overlay = node?.querySelector("#siren-boss-hud");
+    const prompt = node?.querySelector("#siren-boss-prompt");
+    if (!overlay || !prompt) {
+      return;
+    }
+
+    if (!snapshot?.active) {
+      overlay.hidden = true;
+      prompt.textContent = "";
+      prompt.classList.remove("is-visible");
+      return;
+    }
+
+    overlay.hidden = false;
+    overlay.querySelector(".siren-boss-hud__round").textContent = `ROUND ${snapshot.round} / ${snapshot.totalRounds}`;
+    const pips = overlay.querySelectorAll(".siren-boss-hud__pip");
+    pips.forEach((pip, index) => {
+      pip.classList.toggle("is-broken", index >= snapshot.sirenHp);
+    });
+    prompt.textContent = snapshot.prompt ?? "";
+    prompt.classList.toggle("is-visible", Boolean(snapshot.prompt));
+  }
+
+  function startSirenIntro() {
+    const event = EVENTS[SIREN_EVENT_ID];
+    const hasSeenIntro = session.triggeredHazards.has(SIREN_INTRO_HAZARD_ID);
+    const lines = hasSeenIntro ? event.reentry : event.intro;
+    audioManager.playSfx("boss_appear");
+
+    showSirenLines(lines, () => {
+      if (!hasSeenIntro) {
+        session.triggeredHazards.add(SIREN_INTRO_HAZARD_ID);
+        persist?.();
+      }
+      closeSirenDialogue();
+      controller.startSirenFight();
+    });
+  }
+
+  function openSirenDialogue(dialogueId) {
+    const dialogue = EVENTS[SIREN_EVENT_ID].dialogues[dialogueId];
+    if (!dialogue) {
+      controller.resumeSirenFight();
+      return;
+    }
+
+    showSirenLines(dialogue.lines, () => {
+      sirenDialog.setAdvanceHandler(null);
+      sirenChoicePanel = createChoicePanel({
+        root: node.querySelector(".game-stage"),
+        choices: dialogue.choices,
+        inventory: session.inventory,
+        onSelect: (choice) => {
+          sirenChoicePanel.destroy();
+          sirenChoicePanel = null;
+          applySirenEffect(choice.effect);
+          showSirenLines([choice.resultText], () => {
+            closeSirenDialogue();
+            controller.resumeSirenFight(choice.effect);
+          });
+        },
+      });
+    });
+  }
+
+  function finishSirenFight(hasWon) {
+    const outcome = EVENTS[SIREN_EVENT_ID].outcomes[hasWon ? "win" : "lose"];
+    updateSirenHud(null);
+    audioManager.playSfx(hasWon ? "mission_clear" : "qte_fail");
+
+    if (hasWon) {
+      session.clearedEvents.add(SIREN_EVENT_ID);
+    }
+    applySirenEffect(outcome);
+    persistPosition();
+
+    showSirenLines([outcome.resultText], () => {
+      closeSirenDialogue();
+      persistPosition();
+    });
   }
 
   function handlePrincipalStateChange(state) {
@@ -280,6 +440,10 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
           openPuzzle();
         }
       },
+      onSirenFightTrigger: startSirenIntro,
+      onSirenDialogue: openSirenDialogue,
+      onSirenFightUpdate: updateSirenHud,
+      onSirenFightEnd: finishSirenFight,
     });
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
     forcePauseCheckbox.addEventListener("change", () => {
@@ -313,6 +477,11 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     optionModal = null;
     puzzleTerminal?.destroy();
     puzzleTerminal = null;
+    sirenChoicePanel?.destroy();
+    sirenChoicePanel = null;
+    sirenDialog?.destroy();
+    sirenDialog = null;
+    isSirenDialogueOpen = false;
     setGameTimerPaused(false);
     audioManager.setBgmPaused(false);
     controller?.destroy();

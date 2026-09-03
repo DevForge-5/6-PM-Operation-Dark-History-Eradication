@@ -7,6 +7,9 @@ import {
   isHpDepleted,
   setDirection,
 } from "./game-state.js";
+import { SirenFight } from "./siren-fight.js";
+
+export const SIREN_EVENT_ID = "musicRoomSiren";
 
 const CAMERA_SMOOTHING_TIME_CONSTANT = 0.2;
 
@@ -195,6 +198,10 @@ export class GameController {
     reducedMotion = false,
     onHazardTriggered,
     onComputerInteract,
+    onSirenFightTrigger,
+    onSirenDialogue,
+    onSirenFightEnd,
+    onSirenFightUpdate,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -237,7 +244,20 @@ export class GameController {
     this.onDefeatAnimationEnd = onDefeatAnimationEnd;
     this.onHazardTriggered = onHazardTriggered;
     this.onComputerInteract = onComputerInteract;
+    this.onSirenFightTrigger = onSirenFightTrigger;
+    this.onSirenFightEnd = onSirenFightEnd;
     this.puzzleSolved = Boolean(triggeredHazardIds?.has("officePuzzleSolved"));
+    this.sirenFightCleared = Boolean(clearedEventIds?.has(SIREN_EVENT_ID));
+    this.sirenFightArmed = false;
+    this.sirenFight = new SirenFight({
+      config,
+      onDamage: (amount) => this.takeDamage(amount),
+      onSirenHit: () => this.onSirenFightUpdate?.(this.sirenFight.snapshot),
+      onDialogue: (dialogueId) => onSirenDialogue?.(dialogueId),
+      onFinish: (hasWon) => this.handleSirenFightEnd(hasWon),
+      onUpdate: (snapshot) => onSirenFightUpdate?.(snapshot),
+    });
+    this.onSirenFightUpdate = onSirenFightUpdate;
     this.isNearComputer = false;
     this.triggeredEncounterId = null;
     this.goalReached = false;
@@ -305,7 +325,7 @@ export class GameController {
       const [
         map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
         earbuds, principalIdle, principalSuspicious, principalAlert, sofa,
-        pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren,
+        pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, musicRoomBeam,
         ...vases
       ] = await Promise.all([
         loadImage(this.config.assets.map),
@@ -327,7 +347,10 @@ export class GameController {
         loadImage(this.config.assets.musicRoom.pianoTopRight),
         loadImage(this.config.assets.musicRoom.pianoBottomLeft),
         loadImage(this.config.assets.musicRoom.pianoBottomRight),
+        loadImage(this.config.assets.musicRoom.pianoAttack),
         loadImage(this.config.assets.musicRoom.siren),
+        loadImage(this.config.assets.musicRoom.sirenAttack),
+        loadImage(this.config.assets.musicRoom.beam),
         ...this.config.assets.office.vases.map((source) => loadImage(source)),
       ]);
 
@@ -340,7 +363,9 @@ export class GameController {
         computer,
         earbuds,
         office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
-        musicRoom: { pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren },
+        musicRoom: {
+          pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, beam: musicRoomBeam,
+        },
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
       this.prepareMapCollision();
@@ -561,6 +586,17 @@ export class GameController {
     };
   }
 
+  getPianoCollisionBox(piano) {
+    const inset = 16;
+    const size = this.config.musicRoom.pianoSize;
+    return {
+      x: piano.x + inset,
+      y: piano.y + inset,
+      width: size - inset * 2,
+      height: size - inset * 2,
+    };
+  }
+
   getPlayerFootPoint() {
     const player = this.state.player;
     return { x: player.x + player.size / 2, y: player.y + player.size - this.config.player.footInsetY };
@@ -637,6 +673,87 @@ export class GameController {
 
     this.puzzleSolved = true;
     this.onHazardTriggered?.("officePuzzleSolved");
+  }
+
+  get isSirenFightActive() {
+    return this.sirenFight.isActive;
+  }
+
+  isBoxInsideSirenArena(box) {
+    const arena = this.config.musicRoom.fight.arena;
+    return box.x >= arena.x
+      && box.y >= arena.y
+      && box.x + box.width <= arena.x + arena.width
+      && box.y + box.height <= arena.y + arena.height;
+  }
+
+  // Deliberately the whole collision box, not the foot point: the fight seals
+  // the room, so starting it while the player still straddles the doorway
+  // would leave every candidate position rejected and freeze them in place.
+  isPlayerInSirenArena() {
+    return this.isBoxInsideSirenArena(
+      this.getPlayerCollisionBox(this.state.player.x, this.state.player.y),
+    );
+  }
+
+  updateSirenFight(deltaSeconds) {
+    if (this.sirenFightCleared) {
+      return;
+    }
+
+    if (!this.sirenFight.isActive && !this.sirenFightArmed) {
+      if (this.isPlayerInSirenArena()) {
+        this.sirenFightArmed = true;
+        this.onSirenFightTrigger?.();
+      }
+      return;
+    }
+
+    if (!this.sirenFight.isActive) {
+      return;
+    }
+
+    const player = this.state.player;
+    this.sirenFight.update(
+      deltaSeconds,
+      this.getPlayerCollisionBox(player.x, player.y),
+      { x: player.x + player.size / 2, y: player.y + player.size / 2 },
+    );
+  }
+
+  // Called by the scene once the intro dialogue has been read.
+  startSirenFight() {
+    if (this.sirenFightCleared || this.sirenFight.isActive) {
+      return;
+    }
+
+    const start = this.config.musicRoom.fight.playerStart;
+    this.state.player.x = start.x;
+    this.state.player.y = start.y;
+    this.state.player.facing = start.facing ?? this.state.player.facing;
+    this.clearAllInput();
+    this.sirenFightArmed = true;
+    this.sirenFight.start();
+  }
+
+  // Called by the scene once a mid-fight dialogue choice has been picked.
+  resumeSirenFight(effect) {
+    this.sirenFight.resumeFromDialogue(effect ?? {});
+  }
+
+  handleSirenFightEnd(hasWon) {
+    if (hasWon) {
+      this.sirenFightCleared = true;
+    } else {
+      // Losing pushes the player back into the corridor so re-entering the
+      // room starts the fight over (same retry loop as a failed battle).
+      const retreat = this.config.musicRoom.fight.retreat;
+      this.state.player.x = retreat.x;
+      this.state.player.y = retreat.y;
+      this.sirenFightArmed = false;
+    }
+    this.clearAllInput();
+    this.onSirenFightEnd?.(hasWon);
   }
 
   updateComputerInteraction() {
@@ -757,6 +874,23 @@ export class GameController {
     if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
       return false;
     }
+    if (this.config.musicRoom.pianos.some((piano) => (
+      rectanglesOverlap(playerBox, this.getPianoCollisionBox(piano))
+    ))) {
+      return false;
+    }
+
+    // The music room seals shut for the duration of the siren fight - you
+    // can't walk out of a boss room mid-fight. The seal only applies while the
+    // player is already inside it, so nothing can strand them outside with
+    // every direction blocked.
+    if (
+      this.sirenFight.isActive
+      && !this.isBoxInsideSirenArena(playerBox)
+      && this.isPlayerInSirenArena()
+    ) {
+      return false;
+    }
 
     for (const encounter of this.state.encounters) {
       if (!encounter.enabled) {
@@ -812,6 +946,7 @@ export class GameController {
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
     this.updateOfficeHazards(deltaSeconds);
     this.updateComputerInteraction();
+    this.updateSirenFight(deltaSeconds);
 
     if (isMoving) {
       this.playerAnimationElapsed += deltaSeconds;
@@ -937,6 +1072,13 @@ export class GameController {
 
     for (const encounter of this.state.encounters) {
       if (!encounter.enabled || !isVisible(encounter.x, encounter.y, encounter.size, encounter.size)) {
+        continue;
+      }
+      // The siren has its own dedicated decoration sprite drawn later
+      // alongside the rest of the music room (see musicRoom.siren below) -
+      // skip the generic shadow-monster silhouette here so it doesn't show
+      // through any transparent padding on that sprite.
+      if (encounter.id === "musicRoomSiren") {
         continue;
       }
 
@@ -1066,28 +1208,122 @@ export class GameController {
     }
 
     const musicRoom = this.config.musicRoom;
-    for (const piano of musicRoom.pianos) {
-      if (!isVisible(piano.x, piano.y, musicRoom.pianoSize, musicRoom.pianoSize)) {
-        continue;
+    const pianoSize = musicRoom.pianoSize;
+    const sirenCenterX = musicRoom.siren.x + musicRoom.siren.size / 2;
+    const sirenCenterY = musicRoom.siren.y + musicRoom.siren.size / 2;
+    musicRoom.pianos.forEach((piano, index) => {
+      if (!isVisible(piano.x, piano.y, pianoSize, pianoSize)) {
+        return;
       }
 
+      const attackFrame = this.sirenFight.isActive
+        ? this.sirenFight.getPianoAttackFrame(index)
+        : null;
+      const attackStrip = this.images.musicRoom.pianoAttack;
+
+      if (attackFrame === null || !attackStrip) {
+        this.context.drawImage(
+          this.images.musicRoom[piano.corner],
+          toScreenX(piano.x),
+          toScreenY(piano.y),
+          toScreenSize(pianoSize),
+          toScreenSize(pianoSize),
+        );
+        return;
+      }
+
+      // 피아노_입벌림 is drawn front-on (keyboard/mouth pointing down) in a
+      // single orientation, while each corner's idle sprite is pre-rotated to
+      // open toward the room's center. Rotate the attack pose the same way so
+      // the mouth keeps facing the middle of the room when it fires.
+      const centerX = piano.x + pianoSize / 2;
+      const centerY = piano.y + pianoSize / 2;
+      const angle = Math.atan2(sirenCenterY - centerY, sirenCenterX - centerX) - Math.PI / 2;
+      const frameCount = 2;
+      const frameWidth = attackStrip.width / frameCount;
+      const screenSize = toScreenSize(pianoSize);
+
+      this.context.save();
+      this.context.translate(toScreenX(centerX), toScreenY(centerY));
+      this.context.rotate(angle);
       this.context.drawImage(
-        this.images.musicRoom[piano.corner],
-        toScreenX(piano.x),
-        toScreenY(piano.y),
-        toScreenSize(musicRoom.pianoSize),
-        toScreenSize(musicRoom.pianoSize),
+        attackStrip,
+        attackFrame * frameWidth,
+        0,
+        frameWidth,
+        attackStrip.height,
+        -screenSize / 2,
+        -screenSize / 2,
+        screenSize,
+        screenSize,
       );
+      this.context.restore();
+    });
+
+    // The ambient trails are the siren's power feeding off the pianos - once
+    // it's beaten the room goes quiet, and during the fight the same sprite is
+    // busy flying at the player as live bolts instead.
+    if (!this.sirenFightCleared && !this.sirenFight.isActive) {
+      for (const trail of musicRoom.beamTrails) {
+        const trailSize = musicRoom.beamFrameSize;
+        if (!isVisible(trail.x - trailSize / 2, trail.y - trailSize / 2, trailSize, trailSize)) {
+          continue;
+        }
+
+        const strip = this.images.musicRoom.beam;
+        const frameWidth = strip.width / 4;
+        this.context.drawImage(
+          strip,
+          trail.frame * frameWidth,
+          0,
+          frameWidth,
+          strip.height,
+          toScreenX(trail.x - trailSize / 2),
+          toScreenY(trail.y - trailSize / 2),
+          toScreenSize(trailSize),
+          toScreenSize(trailSize),
+        );
+      }
     }
 
-    if (isVisible(musicRoom.siren.x, musicRoom.siren.y, musicRoom.siren.size, musicRoom.siren.size)) {
-      this.context.drawImage(
-        this.images.musicRoom.siren,
-        toScreenX(musicRoom.siren.x),
-        toScreenY(musicRoom.siren.y),
-        toScreenSize(musicRoom.siren.size),
-        toScreenSize(musicRoom.siren.size),
-      );
+    this.sirenFight.renderProjectiles(this.context, this.images.musicRoom.beam, {
+      toScreenX,
+      toScreenY,
+      toScreenSize,
+    });
+
+    if (
+      !this.sirenFightCleared
+      && isVisible(musicRoom.siren.x, musicRoom.siren.y, musicRoom.siren.size, musicRoom.siren.size)
+    ) {
+      const isStunned = this.sirenFight.isSirenStunned;
+      const attackStrip = this.images.musicRoom.sirenAttack;
+      if (isStunned && attackStrip) {
+        const frameCount = 4;
+        const frameWidth = attackStrip.width / frameCount;
+        const frame = Math.floor(this.sirenFight.phaseElapsed / 0.09) % frameCount;
+        this.context.drawImage(
+          attackStrip,
+          frame * frameWidth,
+          0,
+          frameWidth,
+          attackStrip.height,
+          toScreenX(musicRoom.siren.x),
+          toScreenY(musicRoom.siren.y),
+          toScreenSize(musicRoom.siren.size),
+          toScreenSize(musicRoom.siren.size),
+        );
+      } else {
+        this.context.drawImage(
+          this.images.musicRoom.siren,
+          toScreenX(musicRoom.siren.x),
+          toScreenY(musicRoom.siren.y),
+          toScreenSize(musicRoom.siren.size),
+          toScreenSize(musicRoom.siren.size),
+        );
+      }
+
+      this.sirenFight.renderStunRing(this.context, { toScreenX, toScreenY, toScreenSize });
     }
 
     const playerSprite = this.images.player[player.facing];

@@ -92,7 +92,10 @@ export const GAME_CONFIG = Object.freeze({
       pianoTopRight: "./assets/images/MusicRooms/피아노 2.png",
       pianoBottomLeft: "./assets/images/MusicRooms/피아노 4.png",
       pianoBottomRight: "./assets/images/MusicRooms/피아노 3.png",
+      pianoAttack: "./assets/images/MusicRooms/피아노_입벌림 1.png",
       siren: "./assets/images/세이렌 1.png",
+      sirenAttack: "./assets/images/세이렌_공격 1.png",
+      beam: "./assets/images/MusicRooms/장풍 1.png",
     }),
   }),
   monsterDefeat: Object.freeze({
@@ -206,6 +209,72 @@ export const GAME_CONFIG = Object.freeze({
       Object.freeze({ corner: "pianoBottomRight", x: 3296, y: 992 }),
     ]),
     siren: Object.freeze({ x: 2953, y: 873, size: 110 }),
+    // Ambient energy trail flowing from each piano toward the siren at the
+    // room's center. Unlike every other entity above, these x/y are CENTER
+    // points (the render loop subtracts beamFrameSize/2), because each dot
+    // is just a midpoint sample along a piano->siren line, not a placed
+    // object with its own top-left origin. frame 0->3 = small spark -> big
+    // comet (see 장풍 1.png), ordered piano-side -> siren-side so the trail
+    // reads as energy growing as it converges on the siren.
+    beamFrameSize: 64,
+    beamTrails: Object.freeze([
+      // pianoTopLeft -> siren
+      Object.freeze({ frame: 0, x: 2743, y: 772 }),
+      Object.freeze({ frame: 1, x: 2817, y: 816 }),
+      Object.freeze({ frame: 2, x: 2890, y: 859 }),
+      Object.freeze({ frame: 3, x: 2964, y: 902 }),
+      // pianoTopRight -> siren
+      Object.freeze({ frame: 0, x: 3273, y: 772 }),
+      Object.freeze({ frame: 1, x: 3199, y: 816 }),
+      Object.freeze({ frame: 2, x: 3126, y: 859 }),
+      Object.freeze({ frame: 3, x: 3052, y: 902 }),
+      // pianoBottomLeft -> siren
+      Object.freeze({ frame: 0, x: 2743, y: 1032 }),
+      Object.freeze({ frame: 1, x: 2817, y: 1003 }),
+      Object.freeze({ frame: 2, x: 2890, y: 974 }),
+      Object.freeze({ frame: 3, x: 2964, y: 945 }),
+      // pianoBottomRight -> siren
+      Object.freeze({ frame: 0, x: 3273, y: 1032 }),
+      Object.freeze({ frame: 1, x: 3199, y: 1003 }),
+      Object.freeze({ frame: 2, x: 3126, y: 974 }),
+      Object.freeze({ frame: 3, x: 3052, y: 945 }),
+    ]),
+    // In-world siren boss fight. The fight runs inside the exploration scene
+    // on the real music-room floor (no popup arena): the 4 pianos fire energy
+    // bolts at the player, and between rounds the siren drops its guard so the
+    // player can run into it to counterattack.
+    fight: Object.freeze({
+      // Entering this rect starts the fight, and the player is sealed inside
+      // it until the fight resolves. It covers the room's whole walkable
+      // floor, which starts one tile row above `bounds` (see walkableTiles).
+      arena: Object.freeze({ x: 2560, y: 640, width: 896, height: 512 }),
+      sirenHp: 3,
+      hitDamage: 6,
+      projectileSize: 56,
+      // The drawn 장풍 sprite has transparent padding and a long tail; the
+      // hitbox is the bright head only, so grazes don't read as unfair hits.
+      projectileHitSize: 30,
+      stunSeconds: 3,
+      // How long a piano holds its open-mouth pose after firing a bolt.
+      pianoAttackPoseSeconds: 0.45,
+      hitPauseSeconds: 0.5,
+      counterFlashSeconds: 0.35,
+      rounds: Object.freeze([
+        Object.freeze({ durationSeconds: 4, spawnIntervalSeconds: 0.75, projectileSpeed: 200, pattern: "single" }),
+        Object.freeze({ durationSeconds: 4, spawnIntervalSeconds: 0.65, projectileSpeed: 220, pattern: "single", dialogueId: "taunt1" }),
+        Object.freeze({ durationSeconds: 4.5, spawnIntervalSeconds: 0.55, projectileSpeed: 240, pattern: "pair" }),
+        Object.freeze({ durationSeconds: 4.5, spawnIntervalSeconds: 0.5, projectileSpeed: 260, pattern: "pair", dialogueId: "taunt2" }),
+        Object.freeze({ durationSeconds: 5, spawnIntervalSeconds: 0.42, projectileSpeed: 290, pattern: "all" }),
+        Object.freeze({ durationSeconds: 5, spawnIntervalSeconds: 0.35, projectileSpeed: 320, pattern: "all" }),
+      ]),
+      // The fight warps the player here as it starts, so it always opens with
+      // both fighters staged in the middle of the floor - whichever door they
+      // walked in through, they never start the fight stuck in a doorway.
+      playerStart: Object.freeze({ x: 2976, y: 1020, facing: "up" }),
+      // Where the player is pushed back to after losing, so re-entering the
+      // room restarts the fight (corridor tile just west of the room).
+      retreat: Object.freeze({ x: 2464, y: 864 }),
+    }),
   }),
   stats: Object.freeze({
     startMinutes: 17 * 60,

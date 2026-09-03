@@ -324,6 +324,251 @@ test("퍼즐을 풀면 방벽이 사라져 지나갈 수 있고, 새로고침 �
   );
 });
 
+test("음악실 피아노 4개는 플레이어 이동을 막는다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.prepareMapCollision();
+
+  for (const piano of GAME_CONFIG.musicRoom.pianos) {
+    const collisionBox = controller.getPianoCollisionBox(piano);
+    const playerX = collisionBox.x + collisionBox.width / 2 - GAME_CONFIG.player.size / 2;
+    const playerY = collisionBox.y + collisionBox.height / 2 - GAME_CONFIG.player.size / 2;
+    assert(
+      !controller.canPlayerOccupy(playerX, playerY),
+      `${piano.corner} 피아노를 통과할 수 있습니다.`,
+    );
+  }
+});
+
+test("음악실 세이렌전 설정이 이벤트 데이터와 맞물린다", () => {
+  const fight = GAME_CONFIG.musicRoom.fight;
+  const event = EVENTS.musicRoomSiren;
+  assert(fight.rounds.length === 6, `라운드가 6개가 아닙니다: ${fight.rounds.length}`);
+  assert(fight.sirenHp >= 1, "세이렌 HP가 1 미만입니다.");
+  assert(event.intro.length > 0 && event.reentry.length > 0, "인트로/재진입 대사가 비어 있습니다.");
+  assert(event.outcomes.win.resultText && event.outcomes.lose.resultText, "승패 결과 대사가 없습니다.");
+
+  for (const round of fight.rounds) {
+    if (!round.dialogueId) {
+      continue;
+    }
+    const dialogue = event.dialogues[round.dialogueId];
+    assert(dialogue, `${round.dialogueId} 대화가 EVENTS에 없습니다.`);
+    assert(dialogue.choices.length === 2, `${round.dialogueId} 선택지가 2개가 아닙니다.`);
+    for (const choice of dialogue.choices) {
+      assert(choice.label && choice.resultText, `${choice.id} 선택지에 라벨/결과 대사가 없습니다.`);
+    }
+  }
+});
+
+test("세이렌 아레나는 음악실 피아노와 세이렌을 모두 감싼다", () => {
+  const arena = GAME_CONFIG.musicRoom.fight.arena;
+  const contains = (box) => box.x >= arena.x
+    && box.y >= arena.y
+    && box.x + box.width <= arena.x + arena.width
+    && box.y + box.height <= arena.y + arena.height;
+
+  const siren = GAME_CONFIG.musicRoom.siren;
+  assert(
+    contains({ x: siren.x, y: siren.y, width: siren.size, height: siren.size }),
+    "세이렌이 아레나 밖에 있습니다.",
+  );
+  // 위쪽 피아노 2대는 벽에 붙이려고 바닥선보다 72px 위에 그려지므로(스프라이트
+  // 박스는 아레나를 벗어난다) 실제로 플레이어를 막는 충돌 박스만 검사한다.
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  for (const piano of GAME_CONFIG.musicRoom.pianos) {
+    assert(contains(controller.getPianoCollisionBox(piano)), `${piano.corner} 충돌 박스가 아레나 밖에 있습니다.`);
+  }
+
+  const retreat = GAME_CONFIG.musicRoom.fight.retreat;
+  assert(retreat.x + GAME_CONFIG.player.size <= arena.x, "패배 후 후퇴 지점이 아레나 안이라 전투가 곧바로 재시작됩니다.");
+});
+
+test("세이렌전은 음악실에 들어서면 시작되고 전투 중에는 방을 못 나간다", () => {
+  const triggered = [];
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    onSirenFightTrigger: () => triggered.push("start"),
+  });
+  controller.prepareMapCollision();
+
+  const arena = GAME_CONFIG.musicRoom.fight.arena;
+  const insideX = arena.x + arena.width / 2;
+  const insideY = arena.y + arena.height / 2;
+
+  controller.state.player.x = GAME_CONFIG.player.x;
+  controller.state.player.y = GAME_CONFIG.player.y;
+  controller.updateSirenFight(0.016);
+  assert(triggered.length === 0, "음악실 밖인데 세이렌전이 시작됐습니다.");
+
+  controller.state.player.x = insideX;
+  controller.state.player.y = insideY;
+  controller.updateSirenFight(0.016);
+  assert(triggered.length === 1, "음악실에 들어섰는데 세이렌전이 시작되지 않았습니다.");
+
+  controller.startSirenFight();
+  assert(controller.isSirenFightActive, "세이렌전이 활성화되지 않았습니다.");
+  assert(
+    !controller.canPlayerOccupy(arena.x - GAME_CONFIG.player.size, insideY),
+    "전투 중인데 음악실 밖으로 나갈 수 있습니다.",
+  );
+  assert(controller.canPlayerOccupy(insideX, insideY), "전투 중에 방 안에서 움직일 수 없습니다.");
+});
+
+test("복도에서 걸어 들어가 세이렌전이 시작돼도 플레이어가 갇히지 않는다", () => {
+  // 회귀 테스트: 발판(foot point) 기준으로 전투를 시작하면 충돌 박스가 아직
+  // 문턱에 걸쳐 있어서, 방을 봉쇄하는 순간 모든 방향이 막혀 그 자리에 얼어붙는다.
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    onSirenFightTrigger: () => controller.startSirenFight(),
+  });
+  controller.prepareMapCollision();
+
+  const fight = GAME_CONFIG.musicRoom.fight;
+  const size = GAME_CONFIG.player.size;
+  // 음악실 서쪽 복도에서 출발해 한 칸씩 동쪽으로 걸어 들어간다.
+  controller.state.player.x = fight.arena.x - size - 32;
+  controller.state.player.y = 864;
+
+  let steppedInside = false;
+  for (let step = 0; step < 200; step += 1) {
+    const moved = moveWithAxisCollisions(
+      controller.state.player,
+      4,
+      0,
+      (x, y) => controller.canPlayerOccupy(x, y),
+    );
+    const isStuck = moved.x === controller.state.player.x;
+    controller.state.player.x = moved.x;
+    controller.state.player.y = moved.y;
+    controller.updateSirenFight(0.05);
+
+    if (controller.isSirenFightActive) {
+      steppedInside = true;
+      assert(
+        controller.canPlayerOccupy(controller.state.player.x, controller.state.player.y),
+        `전투 시작 후 현재 위치(x=${controller.state.player.x})가 막혀 있어 플레이어가 갇힙니다.`,
+      );
+      // 전투가 시작된 뒤에도 방 안에서는 계속 움직일 수 있어야 한다.
+      assert(
+        controller.canPlayerOccupy(controller.state.player.x + 4, controller.state.player.y)
+        || controller.canPlayerOccupy(controller.state.player.x, controller.state.player.y + 4),
+        "전투 시작 후 어느 방향으로도 움직일 수 없습니다.",
+      );
+      break;
+    }
+
+    assert(!isStuck, `전투 시작 전인데 복도에서 막혔습니다 (x=${controller.state.player.x}).`);
+  }
+
+  assert(steppedInside, "음악실로 걸어 들어갔는데 세이렌전이 시작되지 않았습니다.");
+});
+
+test("세이렌전이 시작되면 플레이어를 방 중앙 개활지로 옮긴다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.prepareMapCollision();
+
+  const fight = GAME_CONFIG.musicRoom.fight;
+  // 어느 문으로 들어왔든 상관없이 같은 자리에서 시작해야 한다.
+  controller.state.player.x = fight.arena.x + 4;
+  controller.state.player.y = 864;
+  controller.startSirenFight();
+
+  const start = fight.playerStart;
+  assert(
+    controller.state.player.x === start.x && controller.state.player.y === start.y,
+    "전투 시작 위치로 이동하지 않았습니다.",
+  );
+  assert(
+    controller.canPlayerOccupy(start.x, start.y),
+    "전투 시작 위치가 막혀 있습니다(벽/피아노와 겹침).",
+  );
+
+  const startBox = controller.getPlayerCollisionBox(start.x, start.y);
+  assert(controller.isBoxInsideSirenArena(startBox), "전투 시작 위치가 아레나 밖입니다.");
+
+  const sirenBox = {
+    x: GAME_CONFIG.musicRoom.siren.x,
+    y: GAME_CONFIG.musicRoom.siren.y,
+    width: GAME_CONFIG.musicRoom.siren.size,
+    height: GAME_CONFIG.musicRoom.siren.size,
+  };
+  const overlapsSiren = startBox.x < sirenBox.x + sirenBox.width
+    && startBox.x + startBox.width > sirenBox.x
+    && startBox.y < sirenBox.y + sirenBox.height
+    && startBox.y + startBox.height > sirenBox.y;
+  assert(!overlapsSiren, "시작하자마자 세이렌과 겹쳐 반격 판정이 들어갑니다.");
+
+  // 시작 지점에서 사방으로 움직일 수 있어야 한다.
+  for (const [dx, dy, label] of [[48, 0, "오른쪽"], [-48, 0, "왼쪽"], [0, -48, "위"], [0, 48, "아래"]]) {
+    assert(
+      controller.canPlayerOccupy(start.x + dx, start.y + dy),
+      `전투 시작 위치에서 ${label}으로 움직일 수 없습니다.`,
+    );
+  }
+});
+
+test("세이렌 반격 3번이면 승리하고, 라운드를 모두 놓치면 패배한다", () => {
+  const fight = GAME_CONFIG.musicRoom.fight;
+  const siren = GAME_CONFIG.musicRoom.siren;
+
+  const runFight = ({ counterEveryStun }) => {
+    const results = [];
+    const controller = new GameController({
+      canvas: document.createElement("canvas"),
+      controls: [],
+      config: GAME_CONFIG,
+      onSirenFightEnd: (hasWon) => results.push(hasWon),
+      onSirenDialogue: () => controller.resumeSirenFight(),
+    });
+    controller.prepareMapCollision();
+    controller.state.player.x = fight.arena.x + 200;
+    controller.state.player.y = fight.arena.y + 200;
+    controller.startSirenFight();
+
+    // 대사 이벤트에서 즉시 재개하도록 콜백을 다시 연결한다(생성 시점엔 controller가 아직 없음).
+    controller.sirenFight.onDialogue = () => controller.resumeSirenFight();
+
+    for (let step = 0; step < 4000 && results.length === 0; step += 1) {
+      if (counterEveryStun && controller.sirenFight.phase === "stun") {
+        controller.state.player.x = siren.x + siren.size / 2 - GAME_CONFIG.player.size / 2;
+        controller.state.player.y = siren.y + siren.size / 2 - GAME_CONFIG.player.size / 2;
+      } else {
+        controller.state.player.x = fight.arena.x + 40;
+        controller.state.player.y = fight.arena.y + 40;
+      }
+      controller.updateSirenFight(0.05);
+    }
+    return { results, controller };
+  };
+
+  const won = runFight({ counterEveryStun: true });
+  assert(won.results[0] === true, "반격을 계속 맞혔는데 승리하지 않았습니다.");
+  assert(won.controller.sirenFightCleared, "승리 후에도 세이렌전이 클리어로 기록되지 않았습니다.");
+
+  const lost = runFight({ counterEveryStun: false });
+  assert(lost.results[0] === false, "한 번도 반격하지 않았는데 패배하지 않았습니다.");
+  assert(
+    lost.controller.state.player.x === fight.retreat.x,
+    "패배 후 플레이어가 복도로 밀려나지 않았습니다.",
+  );
+});
+
 test("대각선 이동 벡터의 길이는 1이다", () => {
   const state = createGameState(GAME_CONFIG);
   setDirection(state.input, "keyboard", "up", true);

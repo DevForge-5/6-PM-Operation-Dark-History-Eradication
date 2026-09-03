@@ -47,33 +47,75 @@ export const EVENTS = Object.freeze({
       },
     ],
   },
+  // The music-room siren is not a battle-scene encounter: it plays out in the
+  // exploration scene on the real room floor (see game/siren-fight.js). These
+  // lines drive the room-entry intro, the mid-fight taunts, and the outcome.
   musicRoomSiren: {
     id: "musicRoomSiren",
     title: "새벽 2시 감성 싸이월드 세이렌",
     intro: [
-      "음악실 스피커에서 낮은 하울링이 새어 나온다.",
-      "『...도토리를 건네주지 않으면, 그 시절 미니홈피를 재생하겠어.』",
+      "음악실 문을 열자 네 대의 피아노가 저 혼자 건반을 두드리기 시작한다.",
+      "『...어서 와. 2009년 5월 3일 새벽 2시 14분의 너를, 내가 아직 기억하고 있어.』",
+      "『도토리를 건네주지 않으면, 그 시절 미니홈피를 여기서 재생하겠어.』",
+      "피아노에서 파장이 뿜어져 나온다. 피해야 한다! (WASD / 방향키)",
     ],
-    choices: [
-      {
-        id: "destroy",
-        label: "[파괴] 앰프에 빗자루 꽂기",
-        type: "instant",
-        effect: { cringeDelta: -15, hpDelta: -5, minutesDelta: 8, resultText: "앰프가 스파크를 튀기며 조용해졌다. 손이 조금 저리다." },
-      },
-      {
-        id: "persuade",
-        label: "[설득] 남의 글이라고 우기기",
-        type: "instant",
-        effect: { cringeDelta: 10, minutesDelta: 6, resultText: "『...본인 아이디로 로그인해놓고 무슨 소리야.』 안 먹혔다." },
-      },
-      {
-        id: "qte",
-        label: "[QTE] 박자에 맞춰 Mute 파장 쏘기",
-        type: "qte",
-        onSuccess: { cringeDelta: -15, minutesDelta: 5, resultText: "박자에 맞춰 정확히 뮤트시켰다!" },
-        onFail: { cringeDelta: 20, minutesDelta: 5, retry: true, resultText: "박자를 놓쳐 하울링을 그대로 들었다..." },
-      },
+    reentry: [
+      "『...또 왔구나. 이번엔 끝까지 들려줄게.』",
     ],
+    dialogues: {
+      taunt1: {
+        lines: [
+          "세이렌이 잠시 건반에서 손을 뗀다.",
+          "『네 미니홈피 BGM, 아직도 그 발라드더라. 왜 안 바꿨어?』",
+        ],
+        choices: [
+          {
+            id: "destroy",
+            label: "[파괴] 앰프에 빗자루 꽂기",
+            resultText: "빗자루가 앰프에 꽂히며 스파크가 튄다. 파장이 눈에 띄게 느려졌다. 손이 좀 저리다.",
+            effect: { hpDelta: -5, cringeDelta: -10, speedFactor: 0.82 },
+          },
+          {
+            id: "persuade",
+            label: "[설득] 남의 글이라고 우기기",
+            resultText: "『...본인 아이디로 로그인해놓고 무슨 소리야.』 안 먹혔다. 오히려 신났다.",
+            effect: { cringeDelta: 12, speedFactor: 1.1 },
+          },
+        ],
+      },
+      taunt2: {
+        lines: [
+          "세이렌의 목소리가 한 옥타브 올라간다.",
+          "『다음 곡은 네가 직접 작사한 거야. 제목이... 「영원의 밤을 걷는 늑대」였나?』",
+        ],
+        choices: [
+          {
+            id: "acorn",
+            label: "[아부] 도토리 5개 선물하기",
+            resultText: "선물함을 확인하러 간 사이 파장이 흐트러졌다. 지갑은 아프지만 효과는 있다.",
+            effect: { cringeDelta: 5, speedFactor: 0.75 },
+          },
+          {
+            id: "report",
+            label: "[강수] BGM 저작권 신고하기",
+            resultText: "『...신고? 신고했다고?!』 격분한 세이렌의 파장이 훨씬 빨라졌다.",
+            effect: { cringeDelta: -12, speedFactor: 1.25 },
+          },
+        ],
+      },
+    },
+    outcomes: {
+      win: {
+        cringeDelta: -20,
+        minutesDelta: 8,
+        resultText: "세 번째 일격에 세이렌이 무너진다. 피아노들이 조용해지고, 그 시절 새벽 2시가 드디어 닫혔다.",
+      },
+      lose: {
+        hpDelta: -10,
+        cringeDelta: 20,
+        minutesDelta: 6,
+        resultText: "끝내 반격하지 못하고 복도로 밀려났다. 등 뒤에서 발라드 전주가 계속 흘러나온다...",
+      },
+    },
   },
 });
