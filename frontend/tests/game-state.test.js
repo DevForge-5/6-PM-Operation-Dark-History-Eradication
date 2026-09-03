@@ -142,6 +142,47 @@ test("낙하 꽃병은 계단 벽이 아닌 안쪽 두 열에서 출발한다", 
   assert(sourceIndexes.join(",") === "1,2", "낙하 꽃병 위치가 계단 안쪽으로 설정되지 않았습니다.");
 });
 
+test("한 번 발동한 꽃병 함정은 새로고침 후 다시 떨어지지 않는다", () => {
+  const trigger = GAME_CONFIG.office.vaseAttack.trigger;
+  const sourceIndexes = GAME_CONFIG.office.vaseAttack.sourceVaseIndexes;
+  const insideTrigger = { x: trigger.x + 80, y: trigger.y + 20, facing: "down" };
+
+  const triggeredIds = [];
+  const firstVisit = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    playerPosition: insideTrigger,
+    onHazardTriggered: (id) => triggeredIds.push(id),
+  });
+  firstVisit.updateOfficeHazards(0.016);
+  assert(firstVisit.vaseAttack.triggered, "발동 구역을 밟았는데 꽃병 함정이 발동하지 않았습니다.");
+  assert(triggeredIds.includes("officeVaseAttack"), "함정 발동이 세션에 알려지지 않아 저장할 수 없습니다.");
+
+  // 새로고침을 흉내낸다: 저장된 triggeredHazardIds를 그대로 다시 넘겨 새 컨트롤러를 만든다.
+  const afterReload = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    playerPosition: insideTrigger,
+    triggeredHazardIds: new Set(triggeredIds),
+  });
+  assert(
+    afterReload.vaseAttack.nextShot === sourceIndexes.length,
+    "새로고침 후에도 꽃병이 다시 떨어질 준비 상태로 남아 있습니다.",
+  );
+  assert(
+    sourceIndexes.every((index) => afterReload.vaseAttack.droppedVaseIndexes.has(index)),
+    "새로고침 후 선반의 꽃병이 다시 채워진 것으로 그려집니다.",
+  );
+
+  afterReload.updateOfficeHazards(0.016);
+  assert(
+    afterReload.vaseAttack.projectiles.length === 0,
+    "이미 피한 꽃병 함정이 새로고침 후 발동 구역에서 다시 투사체를 발사했습니다.",
+  );
+});
+
 test("대각선 이동 벡터의 길이는 1이다", () => {
   const state = createGameState(GAME_CONFIG);
   setDirection(state.input, "keyboard", "up", true);

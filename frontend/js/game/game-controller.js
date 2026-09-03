@@ -177,6 +177,7 @@ export class GameController {
     playerPosition,
     clearedEventIds,
     collectedItemIds,
+    triggeredHazardIds,
     defeatedEncounterId,
     onFrame,
     onEncounter,
@@ -186,6 +187,7 @@ export class GameController {
     onPlayerDeath,
     onPrincipalStateChange,
     onDefeatAnimationEnd,
+    onHazardTriggered,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -224,6 +226,7 @@ export class GameController {
     this.onPlayerDeath = onPlayerDeath;
     this.onPrincipalStateChange = onPrincipalStateChange;
     this.onDefeatAnimationEnd = onDefeatAnimationEnd;
+    this.onHazardTriggered = onHazardTriggered;
     this.triggeredEncounterId = null;
     this.goalReached = false;
     this.viewport = { ...config.canvas };
@@ -245,12 +248,16 @@ export class GameController {
     this.officeRevealProgress = 0;
     this.principalElapsedSeconds = 0;
     this.principalState = "seated";
+    const vaseAttackAlreadyTriggered = Boolean(triggeredHazardIds?.has("officeVaseAttack"));
+    const vaseSourceIndexes = config.office.vaseAttack.sourceVaseIndexes;
     this.vaseAttack = {
-      triggered: false,
-      nextShot: 0,
+      triggered: vaseAttackAlreadyTriggered,
+      // Already resolved in an earlier visit to the office: skip straight to
+      // "all vases already thrown" so reloading doesn't replay the sequence.
+      nextShot: vaseAttackAlreadyTriggered ? vaseSourceIndexes.length : 0,
       shotDelay: 0,
       projectiles: [],
-      droppedVaseIndexes: new Set(),
+      droppedVaseIndexes: new Set(vaseAttackAlreadyTriggered ? vaseSourceIndexes : []),
     };
     this.damageFeedbackCooldown = 0;
     this.playerDefeated = false;
@@ -586,6 +593,7 @@ export class GameController {
 
   triggerVaseAttack() {
     this.vaseAttack.triggered = true;
+    this.onHazardTriggered?.("officeVaseAttack");
   }
 
   launchVaseAttack() {

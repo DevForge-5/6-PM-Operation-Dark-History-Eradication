@@ -181,6 +181,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       playerPosition: payload?.player,
       clearedEventIds: session.clearedEvents,
       collectedItemIds: session.collectedPickups,
+      triggeredHazardIds: session.triggeredHazards,
       defeatedEncounterId: payload?.defeatedEncounterId,
       onFrame: (state) => {
         hud.update(session.stats);
@@ -211,6 +212,10 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       onDamage: () => {
         audioManager.playSfx("damage");
         triggerDamageFeedback();
+      },
+      onHazardTriggered: (hazardId) => {
+        session.triggeredHazards.add(hazardId);
+        persist?.();
       },
       onPlayerDeath: showDeathScreen,
       onPrincipalStateChange: handlePrincipalStateChange,

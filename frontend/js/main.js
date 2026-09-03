@@ -28,6 +28,7 @@ class SceneManager {
       clearedEvents: new Set(),
       inventory: new Set(),
       collectedPickups: new Set(),
+      triggeredHazards: new Set(),
       selectedEndingId: null,
       clearTimeMs: null,
     };
@@ -58,6 +59,7 @@ class SceneManager {
       this.session.clearedEvents = new Set();
       this.session.inventory = new Set();
       this.session.collectedPickups = new Set();
+      this.session.triggeredHazards = new Set();
       this.session.selectedEndingId = null;
       this.session.clearTimeMs = null;
       startGameTimer();
@@ -106,6 +108,7 @@ if (savedProgress && savedProgress.scene && savedProgress.scene !== "title" && S
   sceneManager.session.clearedEvents = new Set(savedProgress.clearedEvents ?? []);
   sceneManager.session.inventory = new Set(savedProgress.inventory ?? []);
   sceneManager.session.collectedPickups = new Set(savedProgress.collectedPickups ?? []);
+  sceneManager.session.triggeredHazards = new Set(savedProgress.triggeredHazards ?? []);
   sceneManager.goTo(savedProgress.scene, savedProgress.payload ?? undefined);
 } else {
   sceneManager.goTo("title");
