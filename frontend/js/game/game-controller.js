@@ -287,7 +287,7 @@ export class GameController {
       const [
         map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
         earbuds, principalIdle, principalSuspicious, principalAlert, sofa,
-        pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren, beam,
+        pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren,
         ...vases
       ] = await Promise.all([
         loadImage(this.config.assets.map),
@@ -310,7 +310,6 @@ export class GameController {
         loadImage(this.config.assets.musicRoom.pianoBottomLeft),
         loadImage(this.config.assets.musicRoom.pianoBottomRight),
         loadImage(this.config.assets.musicRoom.siren),
-        loadImage(this.config.assets.musicRoom.beam),
         ...this.config.assets.office.vases.map((source) => loadImage(source)),
       ]);
 
@@ -323,7 +322,7 @@ export class GameController {
         computer,
         earbuds,
         office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
-        musicRoom: { pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren, beam },
+        musicRoom: { pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren },
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
       this.prepareMapCollision();
@@ -992,27 +991,6 @@ export class GameController {
         toScreenY(piano.y),
         toScreenSize(musicRoom.pianoSize),
         toScreenSize(musicRoom.pianoSize),
-      );
-    }
-
-    for (const trail of musicRoom.beamTrails) {
-      const trailSize = musicRoom.beamFrameSize;
-      const trailX = trail.x - trailSize / 2;
-      const trailY = trail.y - trailSize / 2;
-      if (!isVisible(trailX, trailY, trailSize, trailSize)) {
-        continue;
-      }
-
-      this.context.drawImage(
-        this.images.musicRoom.beam,
-        trail.frame * trailSize,
-        0,
-        trailSize,
-        trailSize,
-        toScreenX(trailX),
-        toScreenY(trailY),
-        toScreenSize(trailSize),
-        toScreenSize(trailSize),
       );
     }
 
