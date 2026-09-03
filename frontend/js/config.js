@@ -155,11 +155,18 @@ export const GAME_CONFIG = Object.freeze({
     safeZone: Object.freeze({ x: 2432, y: 448, width: 256, height: 128 }),
     principalTiming: Object.freeze({ seatedSeconds: 3, suspiciousSeconds: 1, alertSeconds: 1 }),
     revealDuration: 0.65,
+    // x values are content-anchored, not evenly stepped by `size` (64): each
+    // 꽃병 N.png canvas is 64x64 but the vase artwork only fills ~26px of
+    // that, off-center, with transparent padding around it. Spacing by the
+    // full 64px canvas width left visible gaps between vases even though
+    // their bounding boxes were touching. These x's instead line up the
+    // actual painted pixels edge-to-edge (measured via each PNG's alpha
+    // bounding box) so the row reads as one continuous shelf of vases.
     vases: Object.freeze([
       Object.freeze({ x: 2816, y: 64, size: 64 }),
-      Object.freeze({ x: 2880, y: 64, size: 64 }),
-      Object.freeze({ x: 2944, y: 64, size: 64 }),
-      Object.freeze({ x: 3008, y: 64, size: 64 }),
+      Object.freeze({ x: 2842, y: 64, size: 64 }),
+      Object.freeze({ x: 2868, y: 64, size: 64 }),
+      Object.freeze({ x: 2885, y: 64, size: 64 }),
     ]),
     alertDamagePerSecond: 80,
     vaseAttack: Object.freeze({
