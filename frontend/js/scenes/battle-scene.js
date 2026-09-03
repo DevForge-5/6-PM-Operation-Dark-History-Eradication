@@ -13,6 +13,19 @@ import {
 } from "../game/game-state.js";
 import { audioManager } from "../audio/audio-manager.js";
 
+const RETREAT_DISTANCE = 64;
+
+function getRetreatPosition(player) {
+  const offsetByFacing = {
+    up: { x: 0, y: RETREAT_DISTANCE },
+    down: { x: 0, y: -RETREAT_DISTANCE },
+    left: { x: RETREAT_DISTANCE, y: 0 },
+    right: { x: -RETREAT_DISTANCE, y: 0 },
+  };
+  const offset = offsetByFacing[player.facing] ?? { x: 0, y: 0 };
+  return { x: player.x + offset.x, y: player.y + offset.y, facing: player.facing };
+}
+
 export function createBattleScene({ root, session, payload, goTo, persist }) {
   const event = EVENTS[payload?.eventId] ?? EVENTS.hallwayShadow;
   let node = null;
@@ -34,7 +47,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     if (phase === "result") {
       dialog = createDialogBox({ root: node });
       dialog.show(payload.resultText ?? "", { playerName: session.playerName });
-      dialog.setAdvanceHandler(finishBattle);
+      dialog.setAdvanceHandler(() => finishBattle(Boolean(payload?.retry)));
     } else if (phase === "choice") {
       choicePanel = createChoicePanel({
         root: node,
@@ -83,6 +96,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
       const success = await runQte({ root: node });
       outcome = success ? choice.onSuccess : choice.onFail;
     }
+    const isRetry = Boolean(outcome.retry);
 
     applyHpDelta(session.stats, outcome.hpDelta ?? 0);
     applyCringeDelta(session.stats, outcome.cringeDelta ?? 0);
@@ -93,7 +107,9 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     if (outcome.endingId) {
       session.selectedEndingId = outcome.endingId;
     }
-    session.clearedEvents.add(event.id);
+    if (!isRetry) {
+      session.clearedEvents.add(event.id);
+    }
     hud.update(session.stats);
 
     if ((outcome.cringeDelta ?? 0) > 0) {
@@ -103,8 +119,8 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
 
     dialog = createDialogBox({ root: node });
     dialog.show(outcome.resultText, { playerName: session.playerName });
-    dialog.setAdvanceHandler(finishBattle);
-    persist?.({ phase: "result", resultText: outcome.resultText });
+    dialog.setAdvanceHandler(() => finishBattle(isRetry));
+    persist?.({ phase: "result", resultText: outcome.resultText, retry: isRetry });
   }
 
   function triggerCringeFeedback() {
@@ -119,7 +135,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     flash.addEventListener("animationend", () => flash.remove(), { once: true });
   }
 
-  function finishBattle() {
+  function finishBattle(isRetry) {
     if (
       session.selectedEndingId
       || isHpDepleted(session.stats)
@@ -128,9 +144,12 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     ) {
       goTo("ending");
     } else {
+      const playerPosition = payload?.player
+        ? (isRetry ? getRetreatPosition(payload.player) : payload.player)
+        : undefined;
       goTo("exploration", {
-        ...(payload?.player ? { player: payload.player } : {}),
-        defeatedEncounterId: event.id,
+        ...(playerPosition ? { player: playerPosition } : {}),
+        ...(isRetry ? {} : { defeatedEncounterId: event.id }),
       });
     }
   }

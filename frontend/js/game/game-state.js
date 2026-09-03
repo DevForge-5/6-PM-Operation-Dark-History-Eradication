@@ -56,13 +56,22 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+// 프레임마다 실수(deltaSeconds) 단위로 값을 누적하다 보면 부동소수점 오차가
+// 쌓여 20.47999999999979 같은 값이 남는다. 정수로 반올림하면 누적 데미지
+// 총량 자체가 틀어지므로(예: 초당 80데미지 1초가 76.8이 아닌 60으로 깎임),
+// 소수 둘째 자리까지만 정리해 표현 오차만 제거하고 누적값은 그대로 보존한다.
+function roundToPrecision(value, decimals = 2) {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
 export function applyHpDelta(stats, delta) {
-  stats.hp = clamp(stats.hp + delta, 0, stats.hpMax);
+  stats.hp = roundToPrecision(clamp(stats.hp + delta, 0, stats.hpMax));
   return stats.hp;
 }
 
 export function applyCringeDelta(stats, delta) {
-  stats.cringe = clamp(stats.cringe + delta, 0, stats.cringeMax);
+  stats.cringe = roundToPrecision(clamp(stats.cringe + delta, 0, stats.cringeMax));
   return stats.cringe;
 }
 

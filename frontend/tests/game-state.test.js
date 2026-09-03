@@ -126,6 +126,25 @@ test("음악실로 이어지는 계단 위쪽은 교장실로 인식되지 않�
   assert(!controller.isInOffice, "음악실로 이어지는 계단 위쪽이 교장실로 인식됩니다.");
 });
 
+test("교장실 오른쪽 끝(계단 통로 바로 앞 타일)까지 교장실로 인식된다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+
+  // office.bounds 오른쪽 경계가 실제 걸어다닐 수 있는 바닥보다 한 타일(64px)
+  // 짧게 잡혀 있으면, 계단 통로 진입 직전 타일(오른쪽에서 두 번째 칸)에서
+  // 교장 이벤트가 없고 시야도 좁아지는(교장실 밖 취급) 버그가 생긴다.
+  const footX = 2850; // office.bounds 오른쪽 끝 타일(x:2816~2879) 한가운데
+  const footY = 300;
+  controller.state.player.x = footX - GAME_CONFIG.player.size / 2;
+  controller.state.player.y = footY - GAME_CONFIG.player.size + GAME_CONFIG.player.footInsetY;
+  controller.updatePrincipal(0.016);
+
+  assert(controller.isInOffice, "계단 통로 진입 직전 타일이 교장실로 인식되지 않습니다.");
+});
+
 test("HP가 0이 되면 피해 피드백과 사망 처리를 한 번만 호출한다", () => {
   let damageCount = 0;
   let deathCount = 0;
@@ -151,9 +170,39 @@ test("HP가 0이 되면 피해 피드백과 사망 처리를 한 번만 호출�
   assert(!controller.state.isRunning, "사망 후 게임 루프가 중지되지 않았습니다.");
 });
 
-test("낙하 꽃병은 계단 벽이 아닌 안쪽 두 열에서 출발한다", () => {
+test("낙하 꽃병은 발동 구역(계단 통로) 바로 위 선반에서 출발해 플레이어 위로 떨어진다", () => {
+  const vases = GAME_CONFIG.office.vases;
+  const trigger = GAME_CONFIG.office.vaseAttack.trigger;
   const sourceIndexes = GAME_CONFIG.office.vaseAttack.sourceVaseIndexes;
-  assert(sourceIndexes.join(",") === "1,2", "낙하 꽃병 위치가 계단 안쪽으로 설정되지 않았습니다.");
+  assert(sourceIndexes.join(",") === "1,2", "낙하 꽃병이 계단 통로 위 선반으로 설정되지 않았습니다.");
+
+  for (const index of sourceIndexes) {
+    const vase = vases[index];
+    assert(
+      vase.x >= trigger.x && vase.x + vase.size <= trigger.x + trigger.width,
+      `선반 위치(x=${vase.x})가 발동 구역(x=${trigger.x}~${trigger.x + trigger.width}) 안에 있어야 통로에 선 플레이어에게 떨어집니다.`,
+    );
+  }
+});
+
+test("교무실 오른쪽 벽에 붙는 것만으로는 꽃병 함정이 발동하지 않는다", () => {
+  // 발동 구역이 계단으로 이어지는 좁은 통로(x=2944~3072)보다 왼쪽에서 시작하면,
+  // 계단 쪽으로 가지 않고 교무실 자체의 오른쪽 벽(바닥 끝 x≈2816~2879)에만 붙어도
+  // 꽃병이 떨어지는 버그가 있었다. 발동 구역 진입 전, 벽 쪽 바닥에서는 발동하지
+  // 않아야 한다.
+  const trigger = GAME_CONFIG.office.vaseAttack.trigger;
+  const nearRightWallFootX = 2820;
+  assert(nearRightWallFootX < trigger.x, "테스트 좌표가 발동 구역보다 왼쪽에 있어야 합니다.");
+
+  const nearRightWall = { x: nearRightWallFootX - 32, y: trigger.y - 4, facing: "down" };
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    playerPosition: nearRightWall,
+  });
+  controller.updateOfficeHazards(0.016);
+  assert(!controller.vaseAttack.triggered, "계단 통로에 들어가지 않았는데 오른쪽 벽만으로 꽃병 함정이 발동했습니다.");
 });
 
 test("한 번 발동한 꽃병 함정은 새로고침 후 다시 떨어지지 않는다", () => {
@@ -194,6 +243,84 @@ test("한 번 발동한 꽃병 함정은 새로고침 후 다시 떨어지지 �
   assert(
     afterReload.vaseAttack.projectiles.length === 0,
     "이미 피한 꽃병 함정이 새로고침 후 발동 구역에서 다시 투사체를 발사했습니다.",
+  );
+});
+
+test("컴퓨터에 다가가면 퍼즐 상호작용이 한 번만 발동하고, 떠났다 돌아오면 다시 발동한다", () => {
+  const computer = GAME_CONFIG.computer;
+  const insideComputer = { x: computer.x, y: computer.y, facing: "down" };
+  const farAway = { x: 0, y: 0, facing: "down" };
+
+  let interactCount = 0;
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    playerPosition: farAway,
+    onComputerInteract: () => {
+      interactCount += 1;
+    },
+  });
+
+  controller.updateComputerInteraction();
+  assert(interactCount === 0, "컴퓨터에서 먼 곳에 있는데 상호작용이 발동했습니다.");
+
+  controller.state.player.x = insideComputer.x;
+  controller.state.player.y = insideComputer.y;
+  controller.updateComputerInteraction();
+  assert(interactCount === 1, "컴퓨터에 다가갔는데 퍼즐 상호작용이 발동하지 않았습니다.");
+
+  controller.updateComputerInteraction();
+  assert(interactCount === 1, "같은 자리에 계속 서있는데 퍼즐 상호작용이 또 발동했습니다.");
+
+  controller.state.player.x = farAway.x;
+  controller.state.player.y = farAway.y;
+  controller.updateComputerInteraction();
+  controller.state.player.x = insideComputer.x;
+  controller.state.player.y = insideComputer.y;
+  controller.updateComputerInteraction();
+  assert(interactCount === 2, "떠났다가 돌아왔는데 퍼즐 상호작용이 다시 발동하지 않았습니다.");
+});
+
+test("퍼즐을 풀면 방벽이 사라져 지나갈 수 있고, 새로고침 후에도 다시 막히지 않는다", () => {
+  const barrier = GAME_CONFIG.barrier;
+  const barrierCenter = {
+    x: barrier.x + barrier.width / 2 - GAME_CONFIG.player.size / 2,
+    y: barrier.y + barrier.height / 2 - GAME_CONFIG.player.size / 2,
+  };
+
+  const before = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  before.prepareMapCollision();
+  assert(
+    !before.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
+    "퍼즐을 풀기 전인데 방벽을 통과할 수 있습니다.",
+  );
+
+  const triggeredIds = [];
+  before.onHazardTriggered = (id) => triggeredIds.push(id);
+  before.setPuzzleSolved();
+  assert(triggeredIds.includes("officePuzzleSolved"), "퍼즐 완료가 세션에 알려지지 않아 저장할 수 없습니다.");
+  assert(
+    before.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
+    "퍼즐을 풀었는데도 방벽이 여전히 막고 있습니다.",
+  );
+
+  // 새로고침을 흉내낸다: 저장된 triggeredHazardIds를 그대로 다시 넘겨 새 컨트롤러를 만든다.
+  const afterReload = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    triggeredHazardIds: new Set(triggeredIds),
+  });
+  afterReload.prepareMapCollision();
+  assert(afterReload.puzzleSolved, "새로고침 후 퍼즐 완료 상태가 유지되지 않았습니다.");
+  assert(
+    afterReload.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
+    "새로고침 후 방벽이 다시 막고 있습니다.",
   );
 });
 
@@ -479,6 +606,22 @@ test("HP/Cringe는 0~최대치 범위로 clamp된다", () => {
   const stats = createStats(GAME_CONFIG);
   assert(applyHpDelta(stats, -9999) === 0, "HP가 0 밑으로 내려가지 않아야 합니다.");
   assert(applyCringeDelta(stats, 9999) === stats.cringeMax, "Cringe가 최대치를 넘지 않아야 합니다.");
+});
+
+test("HP/Cringe는 프레임 단위 소수 데미지가 누적돼도 부동소수점 잡음 없이 깔끔하게 남는다", () => {
+  const stats = createStats(GAME_CONFIG);
+  // 매 프레임 실제 경과 시간(deltaSeconds)만큼 데미지를 적용하는 상황을 흉내낸다.
+  // 부동소수점 오차가 쌓이면 20.47999999999979 같은 값이 남을 수 있다.
+  // 정수로 반올림하면 누적 데미지 총량 자체가 틀어지므로(예: 초당 80데미지
+  // 1초가 76.8이 아닌 60으로 깎임), 소수 둘째 자리까지만 정리해 표현 오차만
+  // 없애고 누적값(총 데미지)은 그대로 보존되는지 함께 확인한다.
+  let expectedHp = stats.hp;
+  for (let frame = 0; frame < 60; frame += 1) {
+    applyHpDelta(stats, -(80 * 0.016));
+    expectedHp -= 80 * 0.016;
+  }
+  assert(nearlyEqual(stats.hp, expectedHp, 0.01), `누적 데미지 총량이 어긋났습니다: ${stats.hp} (기대값 ${expectedHp})`);
+  assert(!/\.\d{3,}/.test(String(stats.hp)), `HP에 부동소수점 잡음이 남아있습니다: ${stats.hp}`);
 });
 
 test("시간은 마감 시각을 넘지 않고 isTimeUp이 true가 된다", () => {

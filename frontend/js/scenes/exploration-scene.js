@@ -3,6 +3,7 @@ import { createHud } from "../ui/hud.js";
 import { ITEMS } from "../data/items.js";
 import { setGameTimerPaused, startGameTimer } from "../game/game-timer.js";
 import { createOptionModal } from "../ui/option-modal.js";
+import { createPuzzleTerminal } from "../minigames/puzzle-terminal.js";
 import { audioManager } from "../audio/audio-manager.js";
 
 function showPickupToast(stage, text) {
@@ -25,6 +26,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
   let isPauseMenuOpen = false;
   let isForcePaused = false;
   let isSettingsOpen = false;
+  let puzzleTerminal = null;
+  let isPuzzleOpen = false;
   let lastFootstepAt = 0;
   let lastPlayerPosition = null;
 
@@ -48,7 +51,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
   }
 
   function syncPauseState() {
-    const shouldPauseGame = isPauseMenuOpen || isForcePaused || isSettingsOpen;
+    const shouldPauseGame = isPauseMenuOpen || isForcePaused || isSettingsOpen || isPuzzleOpen;
     controller.setPaused(shouldPauseGame);
     setGameTimerPaused(shouldPauseGame);
     audioManager.setBgmPaused(shouldPauseGame);
@@ -88,13 +91,33 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     syncPauseState();
   }
 
+  function openPuzzle() {
+    isPuzzleOpen = true;
+    syncPauseState();
+    puzzleTerminal = createPuzzleTerminal({
+      root: node.querySelector(".game-stage"),
+      onComplete: () => {
+        controller.setPuzzleSolved();
+        closePuzzle();
+      },
+      onClose: closePuzzle,
+    });
+  }
+
+  function closePuzzle() {
+    puzzleTerminal?.destroy();
+    puzzleTerminal = null;
+    isPuzzleOpen = false;
+    syncPauseState();
+  }
+
   function handlePauseKey(event) {
     if (event.code !== "Escape") {
       return;
     }
 
     event.preventDefault();
-    if (isSettingsOpen || controller?.isInputLocked) {
+    if (isSettingsOpen || isPuzzleOpen || controller?.isInputLocked) {
       return;
     }
     setPauseMenuOpen(!isPauseMenuOpen);
@@ -252,6 +275,11 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       onPlayerDeath: showDeathScreen,
       onPrincipalStateChange: handlePrincipalStateChange,
       onDefeatAnimationEnd: () => persist?.({ defeatedEncounterId: undefined }),
+      onComputerInteract: () => {
+        if (!isPuzzleOpen) {
+          openPuzzle();
+        }
+      },
     });
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
     forcePauseCheckbox.addEventListener("change", () => {
@@ -283,6 +311,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     window.removeEventListener("keydown", handlePauseKey);
     optionModal?.destroy();
     optionModal = null;
+    puzzleTerminal?.destroy();
+    puzzleTerminal = null;
     setGameTimerPaused(false);
     audioManager.setBgmPaused(false);
     controller?.destroy();

@@ -160,7 +160,7 @@ export const GAME_CONFIG = Object.freeze({
     }),
   ]),
   office: Object.freeze({
-    bounds: Object.freeze({ x: 2304, y: 128, width: 512, height: 448 }),
+    bounds: Object.freeze({ x: 2304, y: 128, width: 576, height: 448 }),
     principal: Object.freeze({ x: 2496, y: 128, size: 128 }),
     sofa: Object.freeze({ x: 2432, y: 384, width: 256, height: 64 }),
     safeZone: Object.freeze({ x: 2432, y: 448, width: 256, height: 128 }),

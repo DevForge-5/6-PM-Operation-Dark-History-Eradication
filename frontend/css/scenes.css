@@ -709,6 +709,117 @@
   color: #fff;
 }
 
+/* Puzzle terminal (computer minigame) */
+.puzzle-terminal {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 72%);
+  backdrop-filter: blur(3px);
+}
+
+.puzzle-terminal__frame {
+  position: relative;
+  width: min(100%, 480px);
+  aspect-ratio: 1;
+  padding: clamp(16px, 4vw, 30px);
+  border-radius: 28px;
+  background: #2c1c10;
+  box-shadow:
+    0 0 0 6px #4a3018,
+    0 0 0 10px #1b110a,
+    0 12px 40px rgb(0 0 0 / 65%);
+  animation: option-modal-enter 180ms steps(3, end) both;
+}
+
+.puzzle-terminal__close {
+  position: absolute;
+  top: clamp(10px, 3vw, 20px);
+  left: clamp(10px, 3vw, 20px);
+  z-index: 1;
+  width: clamp(30px, 6vw, 44px);
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  color: #fff;
+  font: clamp(24px, 5vw, 36px)/1 "Press Start 2P", monospace;
+  cursor: pointer;
+}
+
+.puzzle-terminal__screen {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(18px, 4vh, 32px);
+  padding: clamp(20px, 6%, 40px);
+  border-radius: 16px;
+  border: 6px solid #c9cdd4;
+  background: #050505;
+  box-shadow: inset 0 0 24px rgb(0 0 0 / 80%);
+}
+
+.puzzle-terminal__screen--hit {
+  animation: puzzle-flash-hit 400ms ease-out;
+}
+
+.puzzle-terminal__screen--miss {
+  animation: puzzle-flash-miss 400ms ease-out;
+}
+
+.puzzle-terminal__count {
+  margin: 0;
+  color: #d7ff2e;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(30px, 8vw, 52px);
+  text-shadow: 0 0 10px rgb(215 255 46 / 60%);
+}
+
+.puzzle-terminal__track-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: clamp(22px, 5vw, 34px);
+}
+
+.puzzle-terminal__arrow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-50%);
+  color: #d7ff2e;
+  font-size: clamp(18px, 4vw, 28px);
+  line-height: 1;
+}
+
+.puzzle-terminal__track {
+  position: relative;
+  height: clamp(12px, 2.6vw, 18px);
+  border-radius: 999px;
+  background: #d7ff2e;
+}
+
+.puzzle-terminal__target {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: clamp(22px, 5vw, 32px);
+  border: 3px solid #d7ff2e;
+  border-radius: 6px;
+  background: #050505;
+  box-sizing: border-box;
+}
+
+.puzzle-terminal__hint {
+  margin: 0;
+  color: #7d8f3c;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 1.8vw, 12px);
+}
+
 /* Ending scene */
 .ending-scene {
   display: grid;
