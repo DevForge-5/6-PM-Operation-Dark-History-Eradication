@@ -170,7 +170,14 @@ export const GAME_CONFIG = Object.freeze({
     ]),
     alertDamagePerSecond: 80,
     vaseAttack: Object.freeze({
-      trigger: Object.freeze({ x: 2816, y: 448, width: 256, height: 128 }),
+      // The trigger used to start at x2816, which overlaps the open office
+      // floor (walkable [2176,2880] at this y) well before the stairwell
+      // corridor - a wall separates them at x:2880-2944, and the corridor
+      // itself is only the narrow walkable strip [2944,3072] (see
+      // collision.walkableTiles rows at y=448/512). Player stepped into the
+      // rectangle before ever entering the corridor, so the vases fell as a
+      // "warning" instead of an actual obstacle blocking the passage.
+      trigger: Object.freeze({ x: 2944, y: 448, width: 128, height: 128 }),
       sourceVaseIndexes: Object.freeze([1, 2]),
       fallSpeed: 720,
       shotDelay: 0.55,
