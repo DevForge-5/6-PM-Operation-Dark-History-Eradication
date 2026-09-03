@@ -35,6 +35,7 @@ export function createGameState(config) {
       collisionInsetX: encounter.collisionInsetX,
       collisionTop: encounter.collisionTop,
       collisionBottom: encounter.collisionBottom,
+      skipDefaultRender: encounter.skipDefaultRender,
       enabled: true,
     })),
     pickups: config.pickups.map((pickup) => ({

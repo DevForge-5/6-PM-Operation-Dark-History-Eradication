@@ -6,6 +6,7 @@ import { createTitleScene } from "./scenes/title-scene.js";
 import { createStoryScene } from "./scenes/story-scene.js";
 import { createExplorationScene } from "./scenes/exploration-scene.js";
 import { createBattleScene } from "./scenes/battle-scene.js";
+import { createMimicBattleScene } from "./scenes/mimic-battle-scene.js";
 import { createEndingScene } from "./scenes/ending-scene.js";
 import { createLeaderboardScene } from "./scenes/leaderboard-scene.js";
 import { audioManager, bindGlobalUiSounds } from "./audio/audio-manager.js";
@@ -15,6 +16,7 @@ const SCENE_FACTORIES = {
   story: createStoryScene,
   exploration: createExplorationScene,
   battle: createBattleScene,
+  mimicBattle: createMimicBattleScene,
   ending: createEndingScene,
   leaderboard: createLeaderboardScene,
 };

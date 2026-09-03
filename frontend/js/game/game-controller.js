@@ -754,6 +754,9 @@ export class GameController {
     if (!this.puzzleSolved && rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
       return false;
     }
+    if (rectanglesOverlap(playerBox, this.config.mimicRoomBarrier)) {
+      return false;
+    }
     if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
       return false;
     }
@@ -936,7 +939,11 @@ export class GameController {
     }
 
     for (const encounter of this.state.encounters) {
-      if (!encounter.enabled || !isVisible(encounter.x, encounter.y, encounter.size, encounter.size)) {
+      if (
+        !encounter.enabled
+        || encounter.skipDefaultRender
+        || !isVisible(encounter.x, encounter.y, encounter.size, encounter.size)
+      ) {
         continue;
       }
 
@@ -977,7 +984,11 @@ export class GameController {
     }
 
     const mimic = this.config.mimic;
-    if (isVisible(mimic.x, mimic.y, mimic.size, mimic.size)) {
+    const mimicEncounter = this.state.encounters.find((encounter) => encounter.id === "mimicBox");
+    if (
+      (!mimicEncounter || mimicEncounter.enabled)
+      && isVisible(mimic.x, mimic.y, mimic.size, mimic.size)
+    ) {
       this.context.drawImage(
         this.images.mimic,
         toScreenX(mimic.x),
@@ -995,6 +1006,17 @@ export class GameController {
         toScreenY(barrier.y),
         toScreenSize(barrier.width),
         toScreenSize(barrier.height),
+      );
+    }
+
+    const mimicRoomBarrier = this.config.mimicRoomBarrier;
+    if (isVisible(mimicRoomBarrier.x, mimicRoomBarrier.y, mimicRoomBarrier.width, mimicRoomBarrier.height)) {
+      this.context.drawImage(
+        this.images.barrier,
+        toScreenX(mimicRoomBarrier.x),
+        toScreenY(mimicRoomBarrier.y),
+        toScreenSize(mimicRoomBarrier.width),
+        toScreenSize(mimicRoomBarrier.height),
       );
     }
 

@@ -248,7 +248,11 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       },
       onEncounter: (eventId) => {
         const { x, y, facing } = controller.state.player;
-        goTo("battle", { eventId, player: { x, y, facing } });
+        if (eventId === "mimicBattle") {
+          goTo("mimicBattle", { player: { x, y, facing } });
+        } else {
+          goTo("battle", { eventId, player: { x, y, facing } });
+        }
       },
       onReachGoal: () => {
         audioManager.playSfx("machine_cogs");
