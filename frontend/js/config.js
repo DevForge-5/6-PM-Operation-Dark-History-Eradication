@@ -198,8 +198,8 @@ export const GAME_CONFIG = Object.freeze({
     bounds: Object.freeze({ x: 2560, y: 704, width: 896, height: 448 }),
     pianoSize: 160,
     pianos: Object.freeze([
-      Object.freeze({ corner: "pianoTopLeft", x: 2560, y: 680 }),
-      Object.freeze({ corner: "pianoTopRight", x: 3296, y: 680 }),
+      Object.freeze({ corner: "pianoTopLeft", x: 2560, y: 632 }),
+      Object.freeze({ corner: "pianoTopRight", x: 3296, y: 632 }),
       Object.freeze({ corner: "pianoBottomLeft", x: 2560, y: 992 }),
       Object.freeze({ corner: "pianoBottomRight", x: 3296, y: 992 }),
     ]),
