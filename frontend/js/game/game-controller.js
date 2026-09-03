@@ -1081,14 +1081,6 @@ export class GameController {
       ) {
         continue;
       }
-      // The siren has its own dedicated decoration sprite drawn later
-      // alongside the rest of the music room (see musicRoom.siren below) -
-      // skip the generic shadow-monster silhouette here so it doesn't show
-      // through any transparent padding on that sprite.
-      if (encounter.id === "musicRoomSiren") {
-        continue;
-      }
-
       this.context.drawImage(
         this.images.monster,
         toScreenX(encounter.x),
