@@ -85,6 +85,15 @@ export const GAME_CONFIG = Object.freeze({
         "./assets/images/교장Assets/꽃병 4.png",
       ]),
     }),
+    musicRoom: Object.freeze({
+      // Each 피아노 N.png is pre-rotated so its keyboard opens toward the
+      // room's center from its own corner (tail tucked into the corner).
+      pianoTopLeft: "./assets/images/MusicRooms/피아노 1.png",
+      pianoTopRight: "./assets/images/MusicRooms/피아노 2.png",
+      pianoBottomLeft: "./assets/images/MusicRooms/피아노 4.png",
+      pianoBottomRight: "./assets/images/MusicRooms/피아노 3.png",
+      siren: "./assets/images/세이렌 1.png",
+    }),
   }),
   monsterDefeat: Object.freeze({
     frameCount: 4,
@@ -186,6 +195,17 @@ export const GAME_CONFIG = Object.freeze({
       damage: 30,
       projectileSize: 40,
     }),
+  }),
+  musicRoom: Object.freeze({
+    bounds: Object.freeze({ x: 2560, y: 704, width: 896, height: 448 }),
+    pianoSize: 160,
+    pianos: Object.freeze([
+      Object.freeze({ corner: "pianoTopLeft", x: 2560, y: 632 }),
+      Object.freeze({ corner: "pianoTopRight", x: 3296, y: 632 }),
+      Object.freeze({ corner: "pianoBottomLeft", x: 2560, y: 992 }),
+      Object.freeze({ corner: "pianoBottomRight", x: 3296, y: 992 }),
+    ]),
+    siren: Object.freeze({ x: 2953, y: 873, size: 110 }),
   }),
   stats: Object.freeze({
     startMinutes: 17 * 60,
