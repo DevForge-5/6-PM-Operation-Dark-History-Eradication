@@ -284,7 +284,12 @@ export class GameController {
     this.bindEvents();
 
     try {
-      const [map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer, earbuds, principalIdle, principalSuspicious, principalAlert, sofa, ...vases] = await Promise.all([
+      const [
+        map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
+        earbuds, principalIdle, principalSuspicious, principalAlert, sofa,
+        pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren, beam,
+        ...vases
+      ] = await Promise.all([
         loadImage(this.config.assets.map),
         loadImage(this.config.assets.player.down),
         loadImage(this.config.assets.player.up),
@@ -300,6 +305,12 @@ export class GameController {
         loadImage(this.config.assets.office.principalSuspicious),
         loadImage(this.config.assets.office.principalAlert),
         loadImage(this.config.assets.office.sofa),
+        loadImage(this.config.assets.musicRoom.pianoTopLeft),
+        loadImage(this.config.assets.musicRoom.pianoTopRight),
+        loadImage(this.config.assets.musicRoom.pianoBottomLeft),
+        loadImage(this.config.assets.musicRoom.pianoBottomRight),
+        loadImage(this.config.assets.musicRoom.siren),
+        loadImage(this.config.assets.musicRoom.beam),
         ...this.config.assets.office.vases.map((source) => loadImage(source)),
       ]);
 
@@ -312,6 +323,7 @@ export class GameController {
         computer,
         earbuds,
         office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
+        musicRoom: { pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, siren, beam },
         player: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
       };
       this.prepareMapCollision();
@@ -966,6 +978,52 @@ export class GameController {
       this.context.rotate(Math.PI);
       this.context.drawImage(this.images.office.vases[projectile.sourceIndex], -size / 2, -size / 2, size, size);
       this.context.restore();
+    }
+
+    const musicRoom = this.config.musicRoom;
+    for (const piano of musicRoom.pianos) {
+      if (!isVisible(piano.x, piano.y, musicRoom.pianoSize, musicRoom.pianoSize)) {
+        continue;
+      }
+
+      this.context.drawImage(
+        this.images.musicRoom[piano.corner],
+        toScreenX(piano.x),
+        toScreenY(piano.y),
+        toScreenSize(musicRoom.pianoSize),
+        toScreenSize(musicRoom.pianoSize),
+      );
+    }
+
+    for (const trail of musicRoom.beamTrails) {
+      const trailSize = musicRoom.beamFrameSize;
+      const trailX = trail.x - trailSize / 2;
+      const trailY = trail.y - trailSize / 2;
+      if (!isVisible(trailX, trailY, trailSize, trailSize)) {
+        continue;
+      }
+
+      this.context.drawImage(
+        this.images.musicRoom.beam,
+        trail.frame * trailSize,
+        0,
+        trailSize,
+        trailSize,
+        toScreenX(trailX),
+        toScreenY(trailY),
+        toScreenSize(trailSize),
+        toScreenSize(trailSize),
+      );
+    }
+
+    if (isVisible(musicRoom.siren.x, musicRoom.siren.y, musicRoom.siren.size, musicRoom.siren.size)) {
+      this.context.drawImage(
+        this.images.musicRoom.siren,
+        toScreenX(musicRoom.siren.x),
+        toScreenY(musicRoom.siren.y),
+        toScreenSize(musicRoom.siren.size),
+        toScreenSize(musicRoom.siren.size),
+      );
     }
 
     const playerSprite = this.images.player[player.facing];

@@ -83,6 +83,16 @@ export const GAME_CONFIG = Object.freeze({
         "./assets/images/교장Assets/꽃병 4.png",
       ]),
     }),
+    musicRoom: Object.freeze({
+      // Each 피아노 N.png is pre-rotated so its keyboard opens toward the
+      // room's center from its own corner (tail tucked into the corner).
+      pianoTopLeft: "./assets/images/MusicRooms/피아노 1.png",
+      pianoTopRight: "./assets/images/MusicRooms/피아노 2.png",
+      pianoBottomLeft: "./assets/images/MusicRooms/피아노 4.png",
+      pianoBottomRight: "./assets/images/MusicRooms/피아노 3.png",
+      siren: "./assets/images/세이렌 1.png",
+      beam: "./assets/images/MusicRooms/장풍 1.png",
+    }),
   }),
   monsterDefeat: Object.freeze({
     frameCount: 4,
@@ -184,6 +194,39 @@ export const GAME_CONFIG = Object.freeze({
       damage: 30,
       projectileSize: 40,
     }),
+  }),
+  musicRoom: Object.freeze({
+    bounds: Object.freeze({ x: 2560, y: 704, width: 896, height: 448 }),
+    pianoSize: 160,
+    pianos: Object.freeze([
+      Object.freeze({ corner: "pianoTopLeft", x: 2584, y: 728 }),
+      Object.freeze({ corner: "pianoTopRight", x: 3272, y: 728 }),
+      Object.freeze({ corner: "pianoBottomLeft", x: 2584, y: 968 }),
+      Object.freeze({ corner: "pianoBottomRight", x: 3272, y: 968 }),
+    ]),
+    siren: Object.freeze({ x: 2944, y: 864, size: 128 }),
+    // 장풍 1.png is a 4-frame strip (0=small spark .. 3=largest comet).
+    // Each corner gets its own line of 4 dots, growing as they approach the
+    // siren at the room's center, matching the mockup's energy-trail look.
+    beamFrameSize: 64,
+    beamTrails: Object.freeze([
+      Object.freeze({ frame: 0, x: 2760, y: 842 }),
+      Object.freeze({ frame: 1, x: 2829, y: 866 }),
+      Object.freeze({ frame: 2, x: 2898, y: 890 }),
+      Object.freeze({ frame: 3, x: 2956, y: 910 }),
+      Object.freeze({ frame: 0, x: 3256, y: 842 }),
+      Object.freeze({ frame: 1, x: 3187, y: 866 }),
+      Object.freeze({ frame: 2, x: 3118, y: 890 }),
+      Object.freeze({ frame: 3, x: 3060, y: 910 }),
+      Object.freeze({ frame: 0, x: 2760, y: 1014 }),
+      Object.freeze({ frame: 1, x: 2829, y: 990 }),
+      Object.freeze({ frame: 2, x: 2898, y: 966 }),
+      Object.freeze({ frame: 3, x: 2956, y: 946 }),
+      Object.freeze({ frame: 0, x: 3256, y: 1014 }),
+      Object.freeze({ frame: 1, x: 3187, y: 990 }),
+      Object.freeze({ frame: 2, x: 3118, y: 966 }),
+      Object.freeze({ frame: 3, x: 3060, y: 946 }),
+    ]),
   }),
   stats: Object.freeze({
     startMinutes: 17 * 60,
