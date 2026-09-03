@@ -18,4 +18,10 @@ export const ITEMS = Object.freeze({
     description: "텍스트형 빔 공격을 완전히 소멸시킨다.",
     effect: { cringeDelta: -30 },
   },
+  magicWand: {
+    id: "magicWand",
+    name: "마법봉",
+    description: "미믹을 쓰러뜨리고 얻은 보상.",
+    effect: {},
+  },
 });

@@ -97,6 +97,14 @@ export const GAME_CONFIG = Object.freeze({
       sirenAttack: "./assets/images/세이렌_공격 1.png",
       beam: "./assets/images/MusicRooms/장풍 1.png",
     }),
+    mimicBattle: Object.freeze({
+      background: "./assets/images/미믹_포켓몬배틀/배틀_배경.png",
+      mimicIdle: "./assets/images/미믹 1.png",
+      // Both spritesheets lay 4 frames out horizontally; only the last
+      // (fully-open mouth / fully-collapsed rubble) frame is used here.
+      mimicAttack: "./assets/images/미믹_입벌리기 1.png",
+      mimicDefeat: "./assets/images/미믹_죽음 1.png",
+    }),
   }),
   monsterDefeat: Object.freeze({
     frameCount: 4,
@@ -131,17 +139,45 @@ export const GAME_CONFIG = Object.freeze({
       collisionTop: 0,
       collisionBottom: 0,
     }),
+    Object.freeze({
+      id: "mimicBox",
+      eventId: "mimicBattle",
+      x: 1664,
+      y: 768,
+      size: 192,
+      collisionInsetX: 0,
+      collisionTop: 0,
+      collisionBottom: 0,
+      // Drawn by the dedicated `mimic` sprite block in render() instead of
+      // the generic encounter loop, which always draws `images.monster`.
+      skipDefaultRender: true,
+    }),
   ]),
   mimic: Object.freeze({
     x: 1664,
     y: 768,
     size: 192,
   }),
+  mimicBattle: Object.freeze({
+    mimicMaxHp: 100,
+    playerAttackDamage: 25,
+    mimicAttackDamage: 5,
+    warmupEvasionBonus: 20,
+    rewardItemId: "magicWand",
+    mouthOpenFrameCount: 4,
+    deathFrameCount: 4,
+  }),
   barrier: Object.freeze({
     x: 2176,
     y: 768,
     width: 64,
     height: 256,
+  }),
+  mimicRoomBarrier: Object.freeze({
+    x: 1472,
+    y: 832,
+    width: 64,
+    height: 128,
   }),
   computer: Object.freeze({
     x: 2304,

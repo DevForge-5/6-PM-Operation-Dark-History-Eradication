@@ -1,6 +1,7 @@
 import { createDialogBox } from "../ui/dialog.js";
 import { createChoicePanel } from "../ui/choice-panel.js";
 import { createHud } from "../ui/hud.js";
+import { createPauseOverlay } from "../ui/pause-overlay.js";
 import { runQte } from "../minigames/qte.js";
 import { EVENTS } from "../data/events.js";
 import {
@@ -37,12 +38,49 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
   let dialog = null;
   let choicePanel = null;
   let introIndex = payload?.introIndex ?? 0;
+  let isPaused = false;
+  let isQteActive = false;
+  let pauseOverlay = null;
+
+  function setDialogAdvance(handler) {
+    dialog?.setAdvanceHandler(() => {
+      if (!isPaused) {
+        handler();
+      }
+    });
+  }
+
+  function setPaused(next) {
+    if (next === isPaused || isQteActive) {
+      return;
+    }
+    isPaused = next;
+    if (isPaused) {
+      pauseOverlay = createPauseOverlay({
+        root: node,
+        onResume: () => setPaused(false),
+        onHome: () => goTo("title", { preservePlayerName: true }),
+      });
+    } else {
+      pauseOverlay?.destroy();
+      pauseOverlay = null;
+    }
+  }
+
+  function handlePauseKey(event) {
+    if (event.code !== "Escape") {
+      return;
+    }
+    event.preventDefault();
+    setPaused(!isPaused);
+  }
 
   function mount() {
     node = document.createElement("section");
     node.className = "scene battle-scene";
     node.setAttribute("aria-label", event.title);
     root.appendChild(node);
+    window.addEventListener("keydown", handlePauseKey);
     audioManager.playSfx(event.id === "hallwayShadow" ? "boss_appear" : "warning");
 
     hud = createHud({ root: node, stats: session.stats });
@@ -51,7 +89,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     if (phase === "result") {
       dialog = createDialogBox({ root: node });
       dialog.show(payload.resultText ?? "", { playerName: session.playerName });
-      dialog.setAdvanceHandler(() => finishBattle(Boolean(payload?.retry)));
+      setDialogAdvance(() => finishBattle(Boolean(payload?.retry)));
     } else if (phase === "choice") {
       choicePanel = createChoicePanel({
         root: node,
@@ -62,7 +100,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     } else {
       dialog = createDialogBox({ root: node });
       dialog.show(event.intro[introIndex], { playerName: session.playerName });
-      dialog.setAdvanceHandler(advanceIntro);
+      setDialogAdvance(advanceIntro);
       persist?.({ eventId: event.id, phase: "intro", introIndex });
     }
   }
@@ -97,7 +135,9 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
 
     let outcome = choice.effect;
     if (choice.type === "qte") {
+      isQteActive = true;
       const success = await runQte({ root: node });
+      isQteActive = false;
       outcome = success ? choice.onSuccess : choice.onFail;
     }
     const isRetry = Boolean(outcome.retry);
@@ -123,7 +163,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
 
     dialog = createDialogBox({ root: node });
     dialog.show(outcome.resultText, { playerName: session.playerName });
-    dialog.setAdvanceHandler(() => finishBattle(isRetry));
+    setDialogAdvance(() => finishBattle(isRetry));
     persist?.({ phase: "result", resultText: outcome.resultText, retry: isRetry });
   }
 
@@ -159,6 +199,9 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
   }
 
   function unmount() {
+    window.removeEventListener("keydown", handlePauseKey);
+    pauseOverlay?.destroy();
+    pauseOverlay = null;
     choicePanel?.destroy();
     choicePanel = null;
     dialog?.destroy();
