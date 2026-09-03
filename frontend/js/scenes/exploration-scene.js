@@ -137,6 +137,20 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
     }
   }
 
+  function showHazardWarning() {
+    const overlay = node?.querySelector("#hazard-warning-overlay");
+    if (!overlay) {
+      return;
+    }
+
+    overlay.hidden = false;
+    overlay.classList.add("is-visible");
+    window.setTimeout(() => {
+      overlay.classList.remove("is-visible");
+      overlay.hidden = true;
+    }, 1500);
+  }
+
   function showDeathScreen() {
     setGameTimerPaused(true);
     audioManager.setBgmPaused(true);
@@ -216,6 +230,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, p
       onHazardTriggered: (hazardId) => {
         session.triggeredHazards.add(hazardId);
         persist?.();
+        if (hazardId === "officeVaseAttack") {
+          showHazardWarning();
+        }
       },
       onPlayerDeath: showDeathScreen,
       onPrincipalStateChange: handlePrincipalStateChange,

@@ -30,6 +30,25 @@
           <div id="principal-danger-overlay" class="principal-danger-overlay" aria-hidden="true"></div>
           <div id="damage-flash-overlay" class="damage-flash-overlay" aria-hidden="true"></div>
 
+          <div id="hazard-warning-overlay" class="hazard-warning-overlay" role="alert" hidden>
+            <svg class="hazard-warning-overlay__icon" viewBox="0 0 100 90" aria-hidden="true">
+              <path
+                d="M50 6 L94 82 L6 82 Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="10"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+              />
+              <path
+                d="M50 32 C55 32 58 35 57.5 40 L54 60 C53.6 63 46.4 63 46 60 L42.5 40 C42 35 45 32 50 32 Z"
+                fill="currentColor"
+              />
+              <circle cx="50" cy="70" r="5.5" fill="currentColor" />
+            </svg>
+            <p class="hazard-warning-overlay__text">장애물 주의</p>
+          </div>
+
           <div class="mobile-controls" aria-label="모바일 이동 조작">
             <button class="direction-button direction-button--up" type="button" data-direction="up" aria-label="위로 이동">▲</button>
             <button class="direction-button direction-button--left" type="button" data-direction="left" aria-label="왼쪽으로 이동">◀</button>
