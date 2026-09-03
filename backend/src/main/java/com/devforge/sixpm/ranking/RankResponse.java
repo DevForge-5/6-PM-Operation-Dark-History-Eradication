@@ -1,16 +1,8 @@
 package com.devforge.sixpm.ranking;
 
-public record RankResponse(
-        String nickname,
-        Integer clearTimeMinutes,
-        Integer cringe,
-        String endingType) {
+public record RankResponse(String nickname, Long clearTimeMs) {
 
     static RankResponse from(Ranking ranking) {
-        return new RankResponse(
-                ranking.getNickname(),
-                ranking.getClearTimeMinutes(),
-                ranking.getCringe(),
-                ranking.getEndingType());
+        return new RankResponse(ranking.getNickname(), ranking.getClearTimeMs());
     }
 }

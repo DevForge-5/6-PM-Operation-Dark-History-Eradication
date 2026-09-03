@@ -1,9 +1,9 @@
 # API Contract — Ranking
 
-프론트(`frontend/js/api/ranking-service.js`)와 백엔드(`backend/`)가 합의한 계약입니다.
-필드명은 양쪽 다 camelCase 그대로 사용합니다 (서버 DTO가 프론트 JSON과 1:1 매칭).
+프론트(`frontend/js/api/speedrun-ranking.js`)와 백엔드(`backend/`)가 합의한 계약입니다.
+엔딩별(5종) 스피드런 랭킹 — 전체 플레이어가 공유하는 서버 저장 리더보드입니다.
 
-## POST /api/rank
+## POST /api/rankings
 
 기록 1건을 등록합니다.
 
@@ -12,40 +12,46 @@
 ```json
 {
   "nickname": "신이현",
-  "clearTimeMinutes": 1025,
-  "cringe": 10,
-  "endingType": "True"
+  "endingId": "ending1",
+  "clearTimeMs": 625000
 }
 ```
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `nickname` | string, 1~12자 | 플레이어 닉네임 |
-| `clearTimeMinutes` | int, 0 이상 | 엔딩 도달 시각 (17:00 = 1020, 18:00 = 1080분 기준, 자정 넘김 없음) |
-| `cringe` | int, 0~100 | 엔딩 시점 Cringe 수치 |
-| `endingType` | string | `True` / `Bad` / `Hidden` / `Secret` |
+| `endingId` | string | `ending1`~`ending5` 중 하나 (True/Bad/Bad/Hidden/Secret — [endings.js](../frontend/js/data/endings.js) 참고) |
+| `clearTimeMs` | long, 0 이상 | 클리어까지 걸린 시간(밀리초) |
 
-**Response** — `201 Created`, 저장된 항목을 그대로 반환.
+**Response** — `201 Created`
+
+```json
+{ "nickname": "신이현", "clearTimeMs": 625000, "rank": 3, "saved": true }
+```
+
+`rank`는 해당 엔딩에서의 전체 순위, `saved`는 상위 10위 안에 들었는지 여부입니다
+(10위 밖이어도 기록 자체는 서버에 남습니다 — `GET`에서만 상위 10개로 제한).
 
 **검증 실패 시** — `400 Bad Request`, `{ "message": "필드: 사유" }`
 
-## GET /api/ranks
+## GET /api/rankings/{endingId}
 
-상위 5개 기록을 반환합니다. **서버에서 정렬해서 내려줍니다** —
-`clearTimeMinutes` 오름차순, 동률이면 `cringe` 오름차순 (프론트는 재정렬하지 않고 그대로 표시).
+해당 엔딩의 상위 10개 기록을 반환합니다. **서버에서 정렬해서 내려줍니다** —
+`clearTimeMs` 오름차순 (프론트는 재정렬하지 않고 그대로 표시).
 
 **Response** — `200 OK`
 
 ```json
 [
-  { "nickname": "신이현", "clearTimeMinutes": 1025, "cringe": 10, "endingType": "True" },
-  { "nickname": "최지훈", "clearTimeMinutes": 1080, "cringe": 88, "endingType": "Bad" }
+  { "nickname": "신이현", "clearTimeMs": 625000 },
+  { "nickname": "최지훈", "clearTimeMs": 701000 }
 ]
 ```
 
-## 전환 방법
+존재하지 않는 `endingId`나 아직 기록이 없는 엔딩은 빈 배열을 반환합니다.
 
-지금 프론트는 `frontend/js/api/mock-rankings.js`로 목데이터를 쓰고 있습니다.
-백엔드 배포가 끝나면 `frontend/js/api/ranking-service.js`의 `USE_MOCK`을 `false`로
-바꾸기만 하면 실제 API를 호출합니다. 배포 아키텍처(백엔드는 Render, 프론트는 Vercel — 서로
-다른 오리진)와 `SIXPM_API_BASE_URL` 주입/CORS 설정 방법은 [deployment.md](./deployment.md) 참고.
+## 배포 연결
+
+프론트는 `window.SIXPM_API_BASE_URL`(배포된 Render 주소)로 이 API를 호출합니다.
+배포 아키텍처(백엔드는 Render, 프론트는 Vercel — 서로 다른 오리진)와 CORS 설정 방법은
+[deployment.md](./deployment.md) 참고.

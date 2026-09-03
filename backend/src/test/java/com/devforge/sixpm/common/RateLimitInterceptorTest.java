@@ -34,7 +34,7 @@ class RateLimitInterceptorTest {
     @Test
     void ignoresNonPostRequests() throws Exception {
         RateLimitInterceptor interceptor = new RateLimitInterceptor();
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/ranks");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/rankings/ending1");
         request.setRemoteAddr("203.0.113.10");
 
         assertTrue(interceptor.preHandle(request, new MockHttpServletResponse(), new Object()));
@@ -42,7 +42,7 @@ class RateLimitInterceptorTest {
     }
 
     private MockHttpServletRequest postRequestFrom(String ip) {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/rank");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/rankings");
         request.setRemoteAddr(ip);
         return request;
     }

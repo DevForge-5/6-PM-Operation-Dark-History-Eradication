@@ -18,18 +18,33 @@ function createRankRow(entry, index) {
   return item;
 }
 
-function renderRanks(list, rankings, limit) {
+function showListMessage(list, message) {
   list.replaceChildren();
+  const item = document.createElement("li");
+  item.className = "leaderboard-rank__empty";
+  item.textContent = message;
+  list.appendChild(item);
+}
+
+function renderRanks(list, rankings, limit) {
   const visibleRanks = rankings.slice(0, limit);
   if (visibleRanks.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "leaderboard-rank__empty";
-    empty.textContent = "아직 등록된 기록이 없습니다.";
-    list.appendChild(empty);
+    showListMessage(list, "아직 등록된 기록이 없습니다.");
     return;
   }
 
+  list.replaceChildren();
   visibleRanks.forEach((entry, index) => list.appendChild(createRankRow(entry, index)));
+}
+
+async function populateRanks(list, endingId, limit) {
+  showListMessage(list, "불러오는 중…");
+  try {
+    const rankings = await getRanking(endingId);
+    renderRanks(list, rankings, limit);
+  } catch (error) {
+    showListMessage(list, "랭킹을 불러오지 못했습니다.");
+  }
 }
 
 export function createLeaderboardScene({ root, goTo }) {
@@ -48,7 +63,7 @@ export function createLeaderboardScene({ root, goTo }) {
     type.textContent = `[${ending.type}]`;
     type.dataset.endingType = ending.type.toLowerCase();
     title.textContent = ending.title;
-    renderRanks(detail.querySelector("[data-role='detail-ranking']"), getRanking(endingId), 10);
+    populateRanks(detail.querySelector("[data-role='detail-ranking']"), endingId, 10);
     overview.hidden = true;
     detail.hidden = false;
     detail.querySelector("[data-action='back']").focus();
@@ -106,7 +121,7 @@ export function createLeaderboardScene({ root, goTo }) {
       list.className = "leaderboard-card__ranking";
       type.textContent = `[${ending.type}]`;
       title.textContent = ending.title;
-      renderRanks(list, getRanking(endingId), 3);
+      populateRanks(list, endingId, 3);
       card.append(type, title, list);
       grid.appendChild(card);
     }

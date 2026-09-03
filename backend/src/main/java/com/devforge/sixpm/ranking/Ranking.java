@@ -20,14 +20,11 @@ public class Ranking {
     @Column(nullable = false, length = 12)
     private String nickname;
 
-    @Column(name = "clear_time_minutes", nullable = false)
-    private Integer clearTimeMinutes;
+    @Column(name = "ending_id", nullable = false, length = 10)
+    private String endingId;
 
-    @Column(nullable = false)
-    private Integer cringe;
-
-    @Column(name = "ending_type", nullable = false, length = 20)
-    private String endingType;
+    @Column(name = "clear_time_ms", nullable = false)
+    private Long clearTimeMs;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -35,11 +32,10 @@ public class Ranking {
     protected Ranking() {
     }
 
-    public Ranking(String nickname, Integer clearTimeMinutes, Integer cringe, String endingType) {
+    public Ranking(String nickname, String endingId, Long clearTimeMs) {
         this.nickname = nickname;
-        this.clearTimeMinutes = clearTimeMinutes;
-        this.cringe = cringe;
-        this.endingType = endingType;
+        this.endingId = endingId;
+        this.clearTimeMs = clearTimeMs;
     }
 
     @PrePersist
@@ -55,16 +51,12 @@ public class Ranking {
         return nickname;
     }
 
-    public Integer getClearTimeMinutes() {
-        return clearTimeMinutes;
+    public String getEndingId() {
+        return endingId;
     }
 
-    public Integer getCringe() {
-        return cringe;
-    }
-
-    public String getEndingType() {
-        return endingType;
+    public Long getClearTimeMs() {
+        return clearTimeMs;
     }
 
     public Instant getCreatedAt() {

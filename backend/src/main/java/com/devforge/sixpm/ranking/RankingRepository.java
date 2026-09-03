@@ -5,5 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RankingRepository extends JpaRepository<Ranking, Long> {
 
-    List<Ranking> findTop5ByOrderByClearTimeMinutesAscCringeAsc();
+    List<Ranking> findTop10ByEndingIdOrderByClearTimeMsAsc(String endingId);
+
+    long countByEndingIdAndClearTimeMsLessThan(String endingId, Long clearTimeMs);
 }

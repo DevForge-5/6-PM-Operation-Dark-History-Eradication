@@ -20,13 +20,7 @@ import {
 import { formatTime, getClearTime, setGameTimerPaused, startGameTimer, stopGameTimer } from "../js/game/game-timer.js";
 import { ENDINGS, resolveEnding } from "../js/data/endings.js";
 import { EVENTS } from "../js/data/events.js";
-import {
-  ENDING_IDS,
-  RANKING_STORAGE_KEY,
-  getPlayerRank,
-  getRanking,
-  saveRanking,
-} from "../js/api/speedrun-ranking.js";
+import { ENDING_IDS, getRanking, saveRanking } from "../js/api/speedrun-ranking.js";
 import { renderRanking } from "../js/ui/result-screen.js";
 import {
   getAudioSettings,
@@ -415,48 +409,81 @@ test("Hidden과 Secret 엔딩 선택지가 실제 전투 이벤트에 연결된�
   assert(endingIds.includes("ending5"), "두꺼비집 선택지가 Secret 엔딩에 연결되지 않았습니다.");
 });
 
-test("엔딩별 랭킹은 분리되고 timeMs 오름차순 상위 10개만 저장된다", () => {
-  const original = localStorage.getItem(RANKING_STORAGE_KEY);
-  try {
-    localStorage.removeItem(RANKING_STORAGE_KEY);
-    ENDING_IDS.forEach((endingId, endingIndex) => {
-      saveRanking(endingId, `엔딩${endingIndex + 1}`, 50_000 + endingIndex);
-    });
-    saveRanking("ending1", "더빠른기록", 10_000);
-    for (let index = 0; index < 10; index += 1) {
-      saveRanking("ending1", `참가자${index}`, 20_000 + index);
+// speedrun-ranking.js now talks to the real backend, so these tests stand
+// a minimal fake server in for `fetch` — same request/response contract as
+// RankingController (see backend/.../ranking) — rather than hitting a live
+// server or reaching into localStorage directly.
+function createFakeRankingBackend() {
+  const store = new Map();
+
+  function ranksFor(endingId) {
+    if (!store.has(endingId)) {
+      store.set(endingId, []);
+    }
+    return store.get(endingId);
+  }
+
+  return async function handle(url, options) {
+    const path = new URL(url, window.location.origin).pathname;
+
+    if (options?.method === "POST" && path === "/api/rankings") {
+      const body = JSON.parse(options.body);
+      const list = ranksFor(body.endingId);
+      const rank = list.filter((entry) => entry.clearTimeMs < body.clearTimeMs).length + 1;
+      list.push({ nickname: body.nickname, clearTimeMs: body.clearTimeMs });
+      return new Response(
+        JSON.stringify({ nickname: body.nickname, clearTimeMs: body.clearTimeMs, rank, saved: rank <= 10 }),
+        { status: 201 },
+      );
     }
 
-    const ending1 = getRanking("ending1");
+    const match = path.match(/^\/api\/rankings\/(.+)$/);
+    if (match) {
+      const top10 = [...ranksFor(match[1])].sort((a, b) => a.clearTimeMs - b.clearTimeMs).slice(0, 10);
+      return new Response(JSON.stringify(top10), { status: 200 });
+    }
+
+    throw new Error(`테스트에서 처리할 수 없는 요청입니다: ${url}`);
+  };
+}
+
+async function withFakeRankingBackend(run) {
+  const originalFetch = window.fetch;
+  window.fetch = createFakeRankingBackend();
+  try {
+    await run();
+  } finally {
+    window.fetch = originalFetch;
+  }
+}
+
+test("엔딩별 랭킹은 분리되고 timeMs 오름차순 상위 10개만 저장된다", async () => {
+  await withFakeRankingBackend(async () => {
+    for (const [endingIndex, endingId] of ENDING_IDS.entries()) {
+      await saveRanking(endingId, `엔딩${endingIndex + 1}`, 50_000 + endingIndex);
+    }
+
+    const fastest = await saveRanking("ending1", "더빠른기록", 10_000);
+    assert(fastest.rank === 1, "새로 등록한 최고 기록의 순위 계산이 올바르지 않습니다.");
+    for (let index = 0; index < 10; index += 1) {
+      await saveRanking("ending1", `참가자${index}`, 20_000 + index);
+    }
+
+    const ending1 = await getRanking("ending1");
     assert(ending1.length === 10, "엔딩별 랭킹이 최대 10개를 초과했습니다.");
     assert(ending1[0].timeMs === 10_000, "랭킹이 timeMs 오름차순으로 정렬되지 않았습니다.");
-    assert(getRanking("ending2").length === 1, "서로 다른 엔딩의 랭킹이 섞였습니다.");
-    assert(getPlayerRank("ending1", 10_000) === 1, "플레이어 순위를 찾지 못했습니다.");
-  } finally {
-    if (original === null) {
-      localStorage.removeItem(RANKING_STORAGE_KEY);
-    } else {
-      localStorage.setItem(RANKING_STORAGE_KEY, original);
-    }
-  }
+    assert((await getRanking("ending2")).length === 1, "서로 다른 엔딩의 랭킹이 섞였습니다.");
+  });
 });
 
-test("랭킹 닉네임은 HTML로 해석되지 않는다", () => {
-  const original = localStorage.getItem(RANKING_STORAGE_KEY);
-  try {
-    localStorage.removeItem(RANKING_STORAGE_KEY);
-    saveRanking("ending1", "<img src=x>", 1_000);
+test("랭킹 닉네임은 HTML로 해석되지 않는다", async () => {
+  await withFakeRankingBackend(async () => {
+    await saveRanking("ending1", "<img src=x>", 1_000);
     const list = document.createElement("ol");
-    renderRanking("ending1", list);
+    await renderRanking("ending1", list);
     assert(list.querySelector("img") === null, "닉네임이 HTML로 삽입됐습니다.");
     assert(list.textContent.includes("<img src=x>"), "닉네임 텍스트가 보존되지 않았습니다.");
-  } finally {
-    if (original === null) {
-      localStorage.removeItem(RANKING_STORAGE_KEY);
-    } else {
-      localStorage.setItem(RANKING_STORAGE_KEY, original);
-    }
-  }
+  });
 });
 
 const results = document.querySelector("#results");
@@ -465,7 +492,7 @@ let passed = 0;
 for (const item of tests) {
   const result = document.createElement("li");
   try {
-    item.run();
+    await item.run();
     result.className = "pass";
     result.textContent = `통과: ${item.name}`;
     passed += 1;

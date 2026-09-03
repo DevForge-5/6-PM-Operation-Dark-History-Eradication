@@ -36,8 +36,9 @@ Java 21이 로컬에 없으면 Gradle이 [foojay 툴체인 리졸버](https://gi
 
 ## 엔드포인트
 
-- `POST /api/rank` — 기록 등록
-- `GET /api/ranks` — 상위 5개 조회 (서버에서 정렬됨)
+- `POST /api/rankings` — 기록 등록 (`{nickname, endingId, clearTimeMs}`, `endingId`는 `ending1`~`ending5`).
+  응답에 `rank`(전체 순위)와 `saved`(상위 10위 안에 들었는지)를 포함.
+- `GET /api/rankings/{endingId}` — 해당 엔딩의 상위 10개 조회 (클리어 시간 오름차순)
 
 ## CORS
 
@@ -47,7 +48,7 @@ Java 21이 로컬에 없으면 Gradle이 [foojay 툴체인 리졸버](https://gi
 
 ## 제출 어뷰징 방지
 
-`POST /api/rank`는 같은 클라이언트(IP 기준) 5초 이내 재요청을 `429`로 막습니다
+`POST /api/rankings`는 같은 클라이언트(IP 기준) 5초 이내 재요청을 `429`로 막습니다
 (`RATE_LIMIT_ENABLED`, `RATE_LIMIT_WINDOW_MILLIS` 환경변수로 조정/비활성화 가능).
 
 ## 배포

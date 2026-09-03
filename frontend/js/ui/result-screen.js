@@ -1,19 +1,32 @@
 import { ENDINGS } from "../data/endings.js";
 import { formatTime } from "../game/game-timer.js";
-import { getPlayerRank, getRanking, saveRanking } from "../api/speedrun-ranking.js";
+import { getRanking, saveRanking } from "../api/speedrun-ranking.js";
 
-export function renderRanking(endingId, rankingList) {
-  const rankings = getRanking(endingId);
+function showRankingMessage(rankingList, message) {
   rankingList.replaceChildren();
+  const item = document.createElement("li");
+  item.className = "result-screen__rank-empty";
+  item.textContent = message;
+  rankingList.appendChild(item);
+}
+
+export async function renderRanking(endingId, rankingList) {
+  showRankingMessage(rankingList, "불러오는 중…");
+
+  let rankings;
+  try {
+    rankings = await getRanking(endingId);
+  } catch (error) {
+    showRankingMessage(rankingList, "랭킹을 불러오지 못했습니다.");
+    return [];
+  }
 
   if (rankings.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "result-screen__rank-empty";
-    empty.textContent = "아직 등록된 기록이 없습니다.";
-    rankingList.appendChild(empty);
+    showRankingMessage(rankingList, "아직 등록된 기록이 없습니다.");
     return rankings;
   }
 
+  rankingList.replaceChildren();
   rankings.forEach((rank, index) => {
     const item = document.createElement("li");
     const rankIndex = document.createElement("span");
@@ -86,7 +99,7 @@ export function showEnding(endingId, data, { root, onRestart } = {}) {
     rankStatus.classList.toggle("is-error", isError);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const input = rankForm.elements.nickname;
     const nickname = Array.from(input.value.trim()).slice(0, 12).join("");
@@ -96,18 +109,22 @@ export function showEnding(endingId, data, { root, onRestart } = {}) {
       return;
     }
 
+    const submitButton = rankForm.querySelector(".result-screen__submit");
+    submitButton.disabled = true;
     try {
-      const result = saveRanking(endingId, nickname, clearTimeMs);
+      const result = await saveRanking(endingId, nickname, clearTimeMs);
       rankForm.reset();
-      renderRanking(endingId, rankingList);
+      await renderRanking(endingId, rankingList);
 
       node.querySelector("[data-role='player-time']").textContent = formatTime(clearTimeMs);
-      const rank = result.saved ? getPlayerRank(endingId, clearTimeMs) : null;
+      const rank = result.saved ? result.rank : null;
       node.querySelector("[data-role='player-position']").textContent = rank ? `${rank}위` : "랭킹 밖의 기록";
       playerRank.hidden = false;
       setStatus(result.saved ? "랭킹에 등록되었습니다!" : "10위 밖의 기록이라 저장되지 않았습니다.");
     } catch (error) {
       setStatus("랭킹을 저장하지 못했습니다. 다시 시도해 주세요.", true);
+    } finally {
+      submitButton.disabled = false;
     }
   }
 

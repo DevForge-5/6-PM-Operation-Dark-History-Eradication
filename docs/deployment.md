@@ -41,18 +41,16 @@ curl https://sixpm-backend-XXXX.onrender.com/api/ranks
 
 ## 4. 프론트엔드를 실제 백엔드에 연결
 
-1. [frontend/index.html](../frontend/index.html)의 `<head>` 안, 다른 스크립트보다
-   먼저 로드되도록 아래 한 줄을 추가합니다 (2단계에서 복사해둔 URL로).
-   ```html
-   <script>window.SIXPM_API_BASE_URL = "https://sixpm-backend-XXXX.onrender.com";</script>
-   ```
-2. [frontend/js/api/ranking-service.js](../frontend/js/api/ranking-service.js)에서
-   `USE_MOCK`을 `false`로 바꿉니다.
-3. Vercel에 프론트를 배포하고 나온 도메인(예: `https://sixpm.vercel.app`)을 복사합니다.
-4. Render 대시보드 → `sixpm-backend` 서비스 → **Environment** 탭 →
-   `CORS_ALLOWED_ORIGINS` 값에 그 도메인을 입력하고 저장합니다
-   (여러 개면 콤마로 구분, 예: `https://sixpm.vercel.app,http://localhost:5173`).
-   저장하면 서비스가 자동 재배포됩니다.
+[frontend/index.html](../frontend/index.html)에 이미 `window.SIXPM_API_BASE_URL`이
+Render 백엔드 주소로 설정돼 있고, [frontend/js/api/speedrun-ranking.js](../frontend/js/api/speedrun-ranking.js)가
+그 주소로 `/api/rankings`를 호출합니다 (계약은 [api-contract.md](./api-contract.md) 참고).
+백엔드 주소가 바뀌면 그 스크립트 한 줄만 갱신하면 됩니다.
+
+Vercel에 프론트를 배포하고 나온 도메인(예: `https://sixpm.vercel.app`)이 확정되면,
+Render 대시보드 → `sixpm-backend` 서비스 → **Environment** 탭 →
+`CORS_ALLOWED_ORIGINS` 값에 그 도메인을 입력하고 저장합니다
+(여러 개면 콤마로 구분, 예: `https://sixpm.vercel.app,http://localhost:5173`).
+저장하면 서비스가 자동 재배포됩니다.
 
 ## 5. 제출 어뷰징 방지
 

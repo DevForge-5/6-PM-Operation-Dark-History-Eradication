@@ -5,13 +5,14 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/rankings")
 public class RankingController {
 
     private final RankingService rankingService;
@@ -20,13 +21,13 @@ public class RankingController {
         this.rankingService = rankingService;
     }
 
-    @PostMapping("/rank")
-    public ResponseEntity<RankResponse> submitRank(@Valid @RequestBody RankSubmitRequest request) {
+    @PostMapping
+    public ResponseEntity<RankSubmitResponse> submitRank(@Valid @RequestBody RankSubmitRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(rankingService.submit(request));
     }
 
-    @GetMapping("/ranks")
-    public List<RankResponse> getRanks() {
-        return rankingService.topRanks();
+    @GetMapping("/{endingId}")
+    public List<RankResponse> getRankings(@PathVariable String endingId) {
+        return rankingService.topRankings(endingId);
     }
 }

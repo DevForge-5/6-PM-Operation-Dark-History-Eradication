@@ -14,9 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-// @Transactional rolls each test's inserts back afterwards, so tests that
-// assert on exact $[n] ranking order don't see leftovers from other tests
-// regardless of execution order.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -26,82 +23,96 @@ class RankingControllerTest {
     private MockMvc mockMvc;
 
     @Test
-    void submitAndListRanks() throws Exception {
-        mockMvc.perform(post("/api/rank")
+    void submitAndListRankings() throws Exception {
+        mockMvc.perform(post("/api/rankings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nickname":"테스트유저","clearTimeMinutes":1025,"cringe":10,"endingType":"True"}
+                                {"nickname":"테스트유저","endingId":"ending1","clearTimeMs":625000}
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.nickname", is("테스트유저")));
+                .andExpect(jsonPath("$.nickname", is("테스트유저")))
+                .andExpect(jsonPath("$.rank", is(1)))
+                .andExpect(jsonPath("$.saved", is(true)));
 
-        mockMvc.perform(get("/api/ranks"))
+        mockMvc.perform(get("/api/rankings/ending1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nickname", is("테스트유저")));
     }
 
     @Test
     void rejectsBlankNickname() throws Exception {
-        mockMvc.perform(post("/api/rank")
+        mockMvc.perform(post("/api/rankings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nickname":"","clearTimeMinutes":1025,"cringe":10,"endingType":"True"}
+                                {"nickname":"","endingId":"ending1","clearTimeMs":625000}
                                 """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void rejectsCringeAboveMax() throws Exception {
-        mockMvc.perform(post("/api/rank")
+    void rejectsUnknownEndingId() throws Exception {
+        mockMvc.perform(post("/api/rankings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nickname":"테스트유저","clearTimeMinutes":1025,"cringe":150,"endingType":"True"}
+                                {"nickname":"테스트유저","endingId":"boss","clearTimeMs":625000}
                                 """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void rejectsBlankEndingType() throws Exception {
-        mockMvc.perform(post("/api/rank")
+    void rejectsNegativeClearTime() throws Exception {
+        mockMvc.perform(post("/api/rankings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nickname":"테스트유저","clearTimeMinutes":1025,"cringe":10,"endingType":""}
+                                {"nickname":"테스트유저","endingId":"ending1","clearTimeMs":-1}
                                 """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void returnsRanksSortedByClearTimeThenCringe() throws Exception {
-        submitRank("느린유저", 1080, 50, "Bad");
-        submitRank("빠른유저", 1000, 90, "True");
-        submitRank("동률유저A", 1030, 40, "True");
-        submitRank("동률유저B", 1030, 10, "True");
+    void ranksByFastestTimeAndKeepsEndingsSeparate() throws Exception {
+        submitRank("느린유저", "ending1", 800_000);
+        submitRank("빠른유저", "ending1", 500_000);
+        submitRank("다른엔딩유저", "ending2", 100);
 
-        mockMvc.perform(get("/api/ranks"))
+        mockMvc.perform(get("/api/rankings/ending1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nickname", is("빠른유저")))
-                .andExpect(jsonPath("$[1].nickname", is("동률유저B")))
-                .andExpect(jsonPath("$[2].nickname", is("동률유저A")))
-                .andExpect(jsonPath("$[3].nickname", is("느린유저")));
+                .andExpect(jsonPath("$[1].nickname", is("느린유저")))
+                .andExpect(jsonPath("$.length()", is(2)));
+
+        mockMvc.perform(get("/api/rankings/ending2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nickname", is("다른엔딩유저")))
+                .andExpect(jsonPath("$.length()", is(1)));
     }
 
     @Test
-    void limitsResultsToTopFive() throws Exception {
-        for (int i = 0; i < 6; i++) {
-            submitRank("유저" + i, 1000 + i, 10, "True");
+    void limitsResultsToTopTenAndReportsRankBeyondThat() throws Exception {
+        for (int i = 0; i < 10; i += 1) {
+            submitRank("유저" + i, "ending3", 1_000 + i);
         }
 
-        mockMvc.perform(get("/api/ranks"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()", is(5)));
-    }
-
-    private void submitRank(String nickname, int clearTimeMinutes, int cringe, String endingType) throws Exception {
-        mockMvc.perform(post("/api/rank")
+        mockMvc.perform(post("/api/rankings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nickname":"%s","clearTimeMinutes":%d,"cringe":%d,"endingType":"%s"}
-                                """.formatted(nickname, clearTimeMinutes, cringe, endingType)))
+                                {"nickname":"11등유저","endingId":"ending3","clearTimeMs":999999}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rank", is(11)))
+                .andExpect(jsonPath("$.saved", is(false)));
+
+        mockMvc.perform(get("/api/rankings/ending3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", is(10)));
+    }
+
+    private void submitRank(String nickname, String endingId, long clearTimeMs) throws Exception {
+        mockMvc.perform(post("/api/rankings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nickname":"%s","endingId":"%s","clearTimeMs":%d}
+                                """.formatted(nickname, endingId, clearTimeMs)))
                 .andExpect(status().isCreated());
     }
 }
