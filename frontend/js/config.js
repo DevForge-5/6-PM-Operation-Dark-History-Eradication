@@ -163,10 +163,10 @@ export const GAME_CONFIG = Object.freeze({
     // actual painted pixels edge-to-edge (measured via each PNG's alpha
     // bounding box) so the row reads as one continuous shelf of vases.
     vases: Object.freeze([
-      Object.freeze({ x: 2816, y: 64, size: 64 }),
-      Object.freeze({ x: 2842, y: 64, size: 64 }),
-      Object.freeze({ x: 2868, y: 64, size: 64 }),
-      Object.freeze({ x: 2885, y: 64, size: 64 }),
+      Object.freeze({ x: 2818, y: 64, size: 64 }),
+      Object.freeze({ x: 2844, y: 64, size: 64 }),
+      Object.freeze({ x: 2870, y: 64, size: 64 }),
+      Object.freeze({ x: 2887, y: 64, size: 64 }),
     ]),
     alertDamagePerSecond: 80,
     vaseAttack: Object.freeze({
