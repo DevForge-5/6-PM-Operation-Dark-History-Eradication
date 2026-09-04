@@ -140,6 +140,14 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
         closeStairDodge();
       },
       onClose: closeStairDodge,
+      onDamage: (amount) => {
+        if (controller.state.stats.hp <= amount) {
+          closeStairDodge();
+        }
+        controller.takeDamage(amount);
+        persistPosition();
+        return !controller.playerDefeated;
+      },
     });
   }
 

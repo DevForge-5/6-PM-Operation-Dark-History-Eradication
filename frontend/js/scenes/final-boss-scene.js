@@ -28,6 +28,7 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
   let phaseTransitionTimer = null;
   let hasFinishedBattle = false;
   let isPauseOpen = false;
+  let advanceDialogue = null;
 
   function setOverlay(title, subtitle = "", visible = true) {
     const overlay = node.querySelector(".final-boss-transition");
@@ -47,24 +48,29 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
       speaker.textContent = lines[index][0];
       text.textContent = lines[index][1];
     };
-    panel.onclick = () => {
+    advanceDialogue = () => {
       index += 1;
       if (index < lines.length) render();
       else {
         panel.hidden = true;
         panel.onclick = null;
+        advanceDialogue = null;
         onDone();
       }
     };
+    panel.onclick = advanceDialogue;
     render();
   }
 
   function beginBattle() {
     setOverlay("「17:57」", "서버 연결 종료까지 3분", true);
     audioManager.playSfx("boss_appear");
+    node.dataset.battleState = "transition";
     transitionTimer = window.setTimeout(() => {
       setOverlay("", "", false);
+      controller.setPaused(false);
       controller.start();
+      node.dataset.battleState = "running";
     }, 1700);
   }
 
@@ -154,6 +160,13 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
   }
 
   function handleKey(event) {
+    if (["Enter", "Space"].includes(event.code) && advanceDialogue) {
+      event.preventDefault();
+      if (!event.repeat) {
+        advanceDialogue();
+      }
+      return;
+    }
     if (event.code === "Escape") {
       event.preventDefault();
       togglePause();
@@ -173,7 +186,7 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
         </header>
         <p class="final-boss-player-hp">HP ${session.stats.hp} / ${session.stats.hpMax}</p>
         <p class="final-boss-controls">이동 WASD / 방향키 · 공격/반사 SPACE / E · ESC 일시정지</p>
-        <section class="final-boss-dialogue" hidden><strong></strong><p></p><small>클릭하여 계속</small></section>
+        <section class="final-boss-dialogue" hidden><strong></strong><p></p><small>클릭 · Enter · Space</small></section>
         <section class="final-boss-transition" hidden><strong></strong><span></span></section>
         <section class="final-boss-pause" hidden><h2>PAUSED</h2><button type="button" data-action="resume">재개</button><button type="button" data-action="home">홈으로</button></section>
         <section class="final-boss-retry" hidden><h2>MISSION FAILED</h2><p>최종 보스 직전부터 다시 시도합니다.</p><button type="button" data-action="retry">재도전</button><button type="button" data-action="home">홈으로</button></section>
@@ -220,6 +233,7 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
     window.clearTimeout(transitionTimer);
     window.clearTimeout(phaseTransitionTimer);
     window.removeEventListener("keydown", handleKey);
+    advanceDialogue = null;
     controller?.destroy();
     controller = null;
     setGameTimerPaused(false);
