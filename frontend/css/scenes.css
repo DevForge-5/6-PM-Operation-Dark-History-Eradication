@@ -910,8 +910,22 @@
   font-size: clamp(9px, 1.8vw, 12px);
 }
 
+/* Stair-dodge packs more rows into the screen than puzzle-terminal.js
+   (count, pips, stage, taunt, hint) - a plain 1:1 frame was too short for
+   all of them, pushing the hint text past the screen's bottom edge. Give
+   this minigame specifically a taller frame and tighter spacing instead
+   of changing the shared square frame every other terminal still uses. */
+.stair-dodge .puzzle-terminal__frame {
+  aspect-ratio: 3 / 4;
+}
+
 .stair-dodge__screen {
   position: relative;
+  gap: clamp(10px, 2.2vh, 18px);
+}
+
+.stair-dodge .puzzle-terminal__count {
+  font-size: clamp(22px, 6vw, 38px);
 }
 
 .stair-dodge__pips {
@@ -936,7 +950,7 @@
 .stair-dodge__stage {
   position: relative;
   width: 100%;
-  height: clamp(140px, 32vh, 220px);
+  height: clamp(120px, 26vh, 190px);
   overflow: hidden;
 }
 
