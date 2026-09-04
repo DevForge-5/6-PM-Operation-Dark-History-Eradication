@@ -1,11 +1,11 @@
-import { GAME_CONFIG } from "../js/config.js";
+import { GAME_CONFIG } from "../js/config.js?v=2";
 import {
   GameController,
   createWalkableTileMap,
   getCameraPosition,
   getPrincipalState,
   moveWithAxisCollisions,
-} from "../js/game/game-controller.js";
+} from "../js/game/game-controller.js?v=2";
 import {
   advanceTime,
   applyCringeDelta,
@@ -59,6 +59,19 @@ test("새 맵 crop 크기가 게임 월드와 같다", () => {
   assert(GAME_CONFIG.mapCrop.height === GAME_CONFIG.world.height, "맵 crop 높이가 월드와 다릅니다.");
   assert(GAME_CONFIG.world.width % GAME_CONFIG.collision.tileSize === 0, "월드 너비가 충돌 타일에 맞지 않습니다.");
   assert(GAME_CONFIG.world.height % GAME_CONFIG.collision.tileSize === 0, "월드 높이가 충돌 타일에 맞지 않습니다.");
+});
+
+test("최종 보스 앞에 접근하면 전투 진입 범위에 들어간다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  const trigger = controller.getFinalBossBox();
+  const boss = GAME_CONFIG.finalBoss;
+
+  assert(trigger.x < boss.x && trigger.y < boss.y, "보스 진입 범위가 이미지보다 넓어야 합니다.");
+  assert(trigger.width > boss.size && trigger.height > boss.size, "보스 앞에서 진입할 수 있도록 여유 범위가 필요합니다.");
 });
 
 test("바닥 타일만 이동 가능하고 벽 타일은 차단된다", () => {

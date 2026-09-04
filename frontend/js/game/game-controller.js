@@ -600,7 +600,13 @@ export class GameController {
 
   getFinalBossBox() {
     const boss = this.config.finalBoss;
-    return { x: boss.x, y: boss.y, width: boss.size, height: boss.size };
+    const padding = boss.triggerPadding ?? 0;
+    return {
+      x: boss.x - padding,
+      y: boss.y - padding,
+      width: boss.size + padding * 2,
+      height: boss.size + padding * 2,
+    };
   }
 
   getSofaCollisionBox() {

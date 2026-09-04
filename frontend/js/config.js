@@ -209,6 +209,7 @@ export const GAME_CONFIG = Object.freeze({
     y: 800,
     size: 128,
     frameSize: 128,
+    triggerPadding: 64,
   }),
   finalBossBattle: Object.freeze({
     phaseHpThresholds: Object.freeze([75, 50, 25, 0]),
