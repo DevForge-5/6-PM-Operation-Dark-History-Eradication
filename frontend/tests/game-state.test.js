@@ -548,6 +548,7 @@ test("세이렌 반격 3번이면 승리하고, 라운드를 모두 놓치면 �
       if (counterEveryStun && controller.sirenFight.phase === "stun") {
         controller.state.player.x = siren.x + siren.size / 2 - GAME_CONFIG.player.size / 2;
         controller.state.player.y = siren.y + siren.size / 2 - GAME_CONFIG.player.size / 2;
+        controller.attemptSirenAttack();
       } else {
         controller.state.player.x = fight.arena.x + 40;
         controller.state.player.y = fight.arena.y + 40;
@@ -567,6 +568,53 @@ test("세이렌 반격 3번이면 승리하고, 라운드를 모두 놓치면 �
     lost.controller.state.player.x === fight.retreat.x,
     "패배 후 플레이어가 복도로 밀려나지 않았습니다.",
   );
+});
+
+test("세이렌에게 닿기만 해서는 반격되지 않고, 공격(스페이스) 입력이 있어야 한다", () => {
+  const fight = GAME_CONFIG.musicRoom.fight;
+  const siren = GAME_CONFIG.musicRoom.siren;
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.prepareMapCollision();
+  controller.state.player.x = fight.arena.x + 200;
+  controller.state.player.y = fight.arena.y + 200;
+  controller.startSirenFight();
+
+  for (let step = 0; step < 400 && controller.sirenFight.phase !== "stun"; step += 1) {
+    controller.updateSirenFight(0.05);
+  }
+  assert(controller.sirenFight.phase === "stun", "스턴 구간까지 도달하지 못했습니다.");
+
+  controller.state.player.x = siren.x + siren.size / 2 - GAME_CONFIG.player.size / 2;
+  controller.state.player.y = siren.y + siren.size / 2 - GAME_CONFIG.player.size / 2;
+  controller.updateSirenFight(0.016);
+  assert(
+    controller.sirenFight.sirenHp === fight.sirenHp,
+    "공격 입력 없이 몸이 닿기만 했는데 반격 판정이 들어갔습니다.",
+  );
+  assert(controller.sirenFight.phase === "stun", "공격 없이 닿기만 했는데 phase가 바뀌었습니다.");
+
+  const landed = controller.attemptSirenAttack();
+  assert(landed === true, "스턴 중 세이렌과 겹친 상태에서 공격이 반격으로 이어지지 않았습니다.");
+  assert(controller.sirenFight.sirenHp === fight.sirenHp - 1, "공격 후 세이렌 HP가 줄지 않았습니다.");
+  assert(controller.sirenFight.phase === "hitPause", "공격이 landed인데 phase가 hitPause로 바뀌지 않았습니다.");
+
+  // 스턴이 아닐 때(회피 구간)는 붙어 있어도 공격이 통하지 않는다.
+  const missController = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  missController.prepareMapCollision();
+  missController.startSirenFight();
+  assert(missController.sirenFight.phase === "dodge", "테스트 전제가 깨졌습니다: 시작 phase가 dodge가 아닙니다.");
+  missController.state.player.x = siren.x + siren.size / 2 - GAME_CONFIG.player.size / 2;
+  missController.state.player.y = siren.y + siren.size / 2 - GAME_CONFIG.player.size / 2;
+  const missed = missController.attemptSirenAttack();
+  assert(missed === false, "회피 구간(스턴 아님)인데 공격이 반격으로 처리됐습니다.");
 });
 
 test("대각선 이동 벡터의 길이는 1이다", () => {

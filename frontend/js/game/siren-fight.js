@@ -200,17 +200,28 @@ export class SirenFight {
     this.onUpdate?.(this.snapshot);
   }
 
-  updateStun(deltaSeconds, playerBox) {
+  updateStun(deltaSeconds) {
     this.phaseElapsed += deltaSeconds;
-
-    if (rectanglesOverlap(playerBox, this.getSirenBox())) {
-      this.landCounter();
-      return;
-    }
 
     if (this.phaseElapsed >= this.settings.stunSeconds) {
       this.advanceRound();
     }
+  }
+
+  // Called by the scene when the player presses the attack key. Only lands
+  // while the siren is actually stunned and the player is close enough to
+  // reach her - a whiffed press during the dodge phase (or from too far
+  // away) does nothing.
+  attack(playerBox) {
+    if (this.phase !== "stun") {
+      return false;
+    }
+    if (!rectanglesOverlap(playerBox, this.getSirenBox())) {
+      return false;
+    }
+
+    this.landCounter();
+    return true;
   }
 
   landCounter() {
@@ -294,7 +305,7 @@ export class SirenFight {
     if (this.phase === "dodge") {
       this.updateDodge(deltaSeconds, playerBox, playerCenter);
     } else if (this.phase === "stun") {
-      this.updateStun(deltaSeconds, playerBox);
+      this.updateStun(deltaSeconds);
     } else if (this.phase === "hitPause") {
       this.updateHitPause(deltaSeconds);
     }
@@ -348,5 +359,53 @@ export class SirenFight {
     );
     context.stroke();
     context.restore();
+  }
+
+  // Expanding white shockwave + a couple of star bursts, shown for
+  // counterFlashSeconds right after a landed hit (see landCounter()).
+  renderHitBurst(context, { toScreenX, toScreenY, toScreenSize }) {
+    if (this.phase !== "hitPause") {
+      return;
+    }
+
+    const siren = this.config.musicRoom.siren;
+    const centerX = siren.x + siren.size / 2;
+    const centerY = siren.y + siren.size / 2;
+    const ratio = Math.min(1, this.counterFlashElapsed / this.settings.counterFlashSeconds);
+    const fade = Math.max(0, 1 - ratio);
+
+    context.save();
+    context.globalAlpha = fade;
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = Math.max(2, toScreenSize(5));
+    context.beginPath();
+    context.arc(
+      toScreenX(centerX),
+      toScreenY(centerY),
+      toScreenSize(siren.size * (0.35 + ratio * 0.55)),
+      0,
+      Math.PI * 2,
+    );
+    context.stroke();
+
+    const sparkCount = 6;
+    const sparkDistance = siren.size * (0.4 + ratio * 0.7);
+    context.fillStyle = "#fff6c8";
+    for (let i = 0; i < sparkCount; i += 1) {
+      const angle = (Math.PI * 2 * i) / sparkCount;
+      const sparkX = centerX + Math.cos(angle) * sparkDistance;
+      const sparkY = centerY + Math.sin(angle) * sparkDistance;
+      const sparkSize = toScreenSize(6 * fade);
+      context.beginPath();
+      context.arc(toScreenX(sparkX), toScreenY(sparkY), sparkSize, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.restore();
+  }
+
+  // Bright white flash on the siren sprite itself while she's reeling from a
+  // landed hit, applied as a canvas filter around the caller's drawImage.
+  get isFlashingFromHit() {
+    return this.phase === "hitPause";
   }
 }

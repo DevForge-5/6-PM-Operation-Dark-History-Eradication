@@ -419,15 +419,29 @@ export class GameController {
 
   handleKeyDown(event) {
     const direction = KEY_DIRECTIONS[event.code];
-    if (!direction) {
+    if (direction) {
+      event.preventDefault();
+      if (this.state.isPaused || this.isInputLocked) {
+        return;
+      }
+      setDirection(this.state.input, "keyboard", direction, true);
       return;
     }
 
-    event.preventDefault();
-    if (this.state.isPaused || this.isInputLocked) {
-      return;
+    if (event.code === "Space" && !event.repeat && this.sirenFight.isActive) {
+      if (this.state.isPaused || this.isInputLocked) {
+        return;
+      }
+      event.preventDefault();
+      this.attemptSirenAttack();
     }
-    setDirection(this.state.input, "keyboard", direction, true);
+  }
+
+  // Called on a Space press while the siren fight is running. Only actually
+  // lands a hit if she's stunned and the player is close enough - see
+  // SirenFight#attack.
+  attemptSirenAttack() {
+    return this.sirenFight.attack(this.getPlayerCollisionBox(this.state.player.x, this.state.player.y));
   }
 
   handleKeyUp(event) {
@@ -1312,6 +1326,14 @@ export class GameController {
     ) {
       const isStunned = this.sirenFight.isSirenStunned;
       const attackStrip = this.images.musicRoom.sirenAttack;
+      const isFlashing = this.sirenFight.isFlashingFromHit;
+
+      if (isFlashing) {
+        this.context.save();
+        // A landed hit strobes the sprite bright white for counterFlashSeconds.
+        this.context.filter = "brightness(4) saturate(0)";
+      }
+
       if (isStunned && attackStrip) {
         const frameCount = 4;
         const frameWidth = attackStrip.width / frameCount;
@@ -1337,7 +1359,12 @@ export class GameController {
         );
       }
 
+      if (isFlashing) {
+        this.context.restore();
+      }
+
       this.sirenFight.renderStunRing(this.context, { toScreenX, toScreenY, toScreenSize });
+      this.sirenFight.renderHitBurst(this.context, { toScreenX, toScreenY, toScreenSize });
     }
 
     const playerSprite = this.images.player[player.facing];
