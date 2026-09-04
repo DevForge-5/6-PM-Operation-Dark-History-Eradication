@@ -185,16 +185,19 @@ export const GAME_CONFIG = Object.freeze({
     y: 768,
     size: 64,
   }),
-  // Server room <-> mimic corridor gate - same shape as the office barrier
-  // pair above, positioned in the walkable gap at x:1472 (col23).
+  // Second minigame's own small room, between the server room and the
+  // mimic corridor. Its map art is the same room shape as the office
+  // barrier+computer room, shifted exactly 960px to the left (measured by
+  // matching the two rooms' corner-tile art pixel-for-pixel), so these
+  // mirror `barrier`/`computer` above at that same offset.
   mimicRoomBarrier: Object.freeze({
-    x: 1472,
+    x: 1216,
     y: 768,
     width: 64,
     height: 256,
   }),
   mimicRoomComputer: Object.freeze({
-    x: 1600,
+    x: 1344,
     y: 768,
     size: 64,
   }),
