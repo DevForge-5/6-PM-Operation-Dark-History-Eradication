@@ -27,7 +27,7 @@ let settings = loadSettings();
 
 function applyVolume(type) {
   for (const audio of audioRegistry[type]) {
-    audio.volume = settings[type] / 100;
+    audio.volume = settings[type] / 100 * (audio.sixpmVolumeScale ?? 1);
   }
 }
 
@@ -58,12 +58,13 @@ export function setBgmVolume(value) {
   return setAudioVolume("bgm", value);
 }
 
-export function registerAudio(type, audio) {
+export function registerAudio(type, audio, volumeScale = 1) {
   if (!AUDIO_TYPES.includes(type) || !audio || typeof audio !== "object" || !("volume" in audio)) {
     throw new Error("등록할 오디오 객체를 확인해 주세요.");
   }
 
+  audio.sixpmVolumeScale = Math.min(1, Math.max(0, Number(volumeScale) || 0));
   audioRegistry[type].add(audio);
-  audio.volume = settings[type] / 100;
+  audio.volume = settings[type] / 100 * audio.sixpmVolumeScale;
   return () => audioRegistry[type].delete(audio);
 }

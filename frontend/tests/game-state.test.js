@@ -237,6 +237,26 @@ test("HP가 0이 되면 피해 피드백과 사망 처리를 한 번만 호출�
   assert(!controller.state.isRunning, "사망 후 게임 루프가 중지되지 않았습니다.");
 });
 
+test("Stage 1 괴물 소멸 시작 콜백은 정확히 한 번 호출된다", () => {
+  let startCount = 0;
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    defeatedEncounterId: "hallwayShadow",
+    clearedEventIds: new Set(["hallwayShadow"]),
+    onDefeatAnimationStart: (eventId) => {
+      assert(eventId === "hallwayShadow", "다른 괴물의 소멸 이벤트가 전달됐습니다.");
+      startCount += 1;
+    },
+  });
+
+  assert(startCount === 1, "소멸 시작 콜백이 한 번만 호출되지 않았습니다.");
+  controller.update(0.1);
+  controller.update(0.1);
+  assert(startCount === 1, "소멸 도중 콜백이 중복 호출됐습니다.");
+});
+
 test("낙하 꽃병은 발동 구역(계단 통로) 바로 위 선반에서 출발해 플레이어 위로 떨어진다", () => {
   const vases = GAME_CONFIG.office.vases;
   const trigger = GAME_CONFIG.office.vaseAttack.trigger;
@@ -288,6 +308,11 @@ test("한 번 발동한 꽃병 함정은 새로고침 후 다시 떨어지지 �
   firstVisit.updateOfficeHazards(0.016);
   assert(firstVisit.vaseAttack.triggered, "발동 구역을 밟았는데 꽃병 함정이 발동하지 않았습니다.");
   assert(triggeredIds.includes("officeVaseAttack"), "함정 발동이 세션에 알려지지 않아 저장할 수 없습니다.");
+  firstVisit.updateOfficeHazards(0.016);
+  assert(
+    triggeredIds.filter((id) => id === "officeVaseAttack").length === 1,
+    "같은 구역에 머무는 동안 꽃병 트리거가 중복 호출됐습니다.",
+  );
 
   // 새로고침을 흉내낸다: 저장된 triggeredHazardIds를 그대로 다시 넘겨 새 컨트롤러를 만든다.
   const afterReload = new GameController({
@@ -1098,17 +1123,21 @@ test("오디오 볼륨은 저장되고 등록된 오디오 객체에 즉시 적�
   const original = getAudioSettings();
   const sfx = { volume: 0 };
   const bgm = { volume: 0 };
+  const quietSfx = { volume: 0 };
   const unregisterSfx = registerAudio("sfx", sfx);
   const unregisterBgm = registerAudio("bgm", bgm);
+  const unregisterQuietSfx = registerAudio("sfx", quietSfx, 0.75);
   try {
     setSfxVolume(30);
     setBgmVolume(70);
     assert(sfx.volume === 0.3, "효과음 Audio 객체에 볼륨이 적용되지 않았습니다.");
+    assert(nearlyEqual(quietSfx.volume, 0.225), "개별 효과음 배율이 전체 SFX 볼륨과 함께 적용되지 않았습니다.");
     assert(bgm.volume === 0.7, "BGM Audio 객체에 볼륨이 적용되지 않았습니다.");
     assert(getAudioSettings().sfx === 30 && getAudioSettings().bgm === 70, "오디오 설정이 저장되지 않았습니다.");
   } finally {
     unregisterSfx();
     unregisterBgm();
+    unregisterQuietSfx();
     setSfxVolume(original.sfx);
     setBgmVolume(original.bgm);
   }

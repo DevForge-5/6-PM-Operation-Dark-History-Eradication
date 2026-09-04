@@ -1877,3 +1877,105 @@
     left: 12px;
   }
 }
+.final-boss-scene {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  background: radial-gradient(circle at 50% 40%, #182129, #030405 72%);
+  color: #f8efbf;
+}
+
+.final-boss-stage {
+  position: relative;
+  width: min(100vw, 1024px);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 3px solid #624050;
+  box-shadow: 0 0 0 5px #12080d, 0 0 45px #9b165c66;
+  background: #07090d;
+}
+
+.final-boss-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.final-boss-hud {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  left: 50%;
+  width: min(78%, 760px);
+  transform: translateX(-50%);
+  text-align: center;
+  text-shadow: 2px 2px #000;
+  pointer-events: none;
+}
+
+.final-boss-hud > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: 7px;
+  letter-spacing: .08em;
+}
+
+.final-boss-hud__phase { color: #ff6888; font-size: .75rem; }
+.final-boss-hud__bar { height: 18px; border: 3px solid #e5dba3; background: #140d12; box-shadow: 0 0 0 2px #000; }
+.final-boss-hud__fill { display: block; width: 100%; height: 100%; background: repeating-linear-gradient(90deg, #d31b4f 0 28px, #f64265 28px 31px); transition: width .18s steps(4); }
+.final-boss-hud__weakness { margin-top: 8px; color: #b9f7da; font-size: .72rem; }
+.final-boss-player-hp, .final-boss-controls { position: absolute; z-index: 3; bottom: 14px; margin: 0; text-shadow: 2px 2px #000; pointer-events: none; }
+.final-boss-player-hp { left: 18px; color: #9fffc8; }
+.final-boss-controls { right: 18px; color: #d3c6b3; font-size: .66rem; }
+
+.final-boss-dialogue {
+  position: absolute;
+  z-index: 8;
+  left: 6%;
+  right: 6%;
+  bottom: 6%;
+  min-height: 118px;
+  padding: 22px 28px;
+  border: 4px solid #decf99;
+  background: rgba(13, 9, 13, .96);
+  box-shadow: 0 0 0 5px #321824, inset 0 0 24px #7e234055;
+  cursor: pointer;
+}
+
+.final-boss-dialogue strong { display: block; color: #ff5b77; margin-bottom: 10px; }
+.final-boss-dialogue p { margin: 0; line-height: 1.65; }
+.final-boss-dialogue small { position: absolute; right: 20px; bottom: 10px; color: #b6a985; }
+
+.final-boss-transition,
+.final-boss-pause,
+.final-boss-retry {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 20px;
+  text-align: center;
+  background: rgba(0, 0, 0, .94);
+}
+
+.final-boss-transition[hidden], .final-boss-pause[hidden], .final-boss-retry[hidden], .final-boss-dialogue[hidden] { display: none; }
+.final-boss-transition strong { font-size: clamp(2.8rem, 8vw, 6rem); color: #f7ebbd; text-shadow: 4px 4px #9e173f; animation: final-boss-time-glitch .15s steps(2) infinite; }
+.final-boss-transition span { color: #ff7189; font-size: clamp(1rem, 2.5vw, 1.6rem); }
+.final-boss-pause h2, .final-boss-retry h2 { color: #ff4568; font-size: 2.5rem; }
+.final-boss-pause button, .final-boss-retry button { min-width: 220px; padding: 14px 24px; border: 3px solid #e5dba3; color: #f8efbf; background: #351223; font: inherit; cursor: pointer; }
+.final-boss-pause button:hover, .final-boss-retry button:hover { background: #6d1735; }
+.final-boss-scene[data-phase="3"] .final-boss-stage { animation: final-boss-glitch-border .35s steps(2) infinite; }
+.final-boss-scene.is-boss-defeated .final-boss-stage { animation: screen-shake .11s steps(2) infinite, final-boss-glitch-border .12s steps(2) infinite; }
+
+@keyframes final-boss-time-glitch { 50% { transform: translate(2px, -1px); text-shadow: -4px 2px #37ffe0, 4px -2px #e31b61; } }
+@keyframes final-boss-glitch-border { 50% { filter: contrast(1.4) hue-rotate(14deg); box-shadow: -5px 0 #18ffd8, 5px 0 #ff235d; } }
+
+@media (max-width: 700px) {
+  .final-boss-hud { top: 7px; width: 70%; }
+  .final-boss-hud__weakness, .final-boss-controls { display: none; }
+  .final-boss-player-hp { bottom: 7px; font-size: .7rem; }
+  .final-boss-dialogue { min-height: 88px; padding: 12px 16px; font-size: .75rem; }
+}

@@ -29,6 +29,13 @@ const SOUND_PATHS = Object.freeze({
   damage: `${AUDIO_ROOT}/sfx/events/damage.ogg`,
   game_over: `${AUDIO_ROOT}/sfx/events/game_over.ogg`,
   mission_clear: `${AUDIO_ROOT}/sfx/events/mission_clear.ogg`,
+  monster_dissolve: `${AUDIO_ROOT}/sfx/events/miss.wav`,
+  flower_break: `${AUDIO_ROOT}/sfx/events/flower.wav`,
+});
+
+const SOUND_VOLUME_SCALES = Object.freeze({
+  monster_dissolve: 0.75,
+  flower_break: 0.9,
 });
 
 const FOOTSTEPS = Array.from(
@@ -37,11 +44,11 @@ const FOOTSTEPS = Array.from(
 );
 const MIN_REPLAY_GAP_MS = 60;
 
-function createAudio(source, type, loop = false) {
+function createAudio(source, type, loop = false, volumeScale = 1) {
   const audio = new Audio(source);
   audio.preload = "auto";
   audio.loop = loop;
-  registerAudio(type, audio);
+  registerAudio(type, audio, volumeScale);
   return audio;
 }
 
@@ -66,7 +73,7 @@ class AudioManager {
 
   getSfx(name) {
     if (!this.sounds.has(name) && SOUND_PATHS[name]) {
-      const audio = createAudio(SOUND_PATHS[name], "sfx");
+      const audio = createAudio(SOUND_PATHS[name], "sfx", false, SOUND_VOLUME_SCALES[name] ?? 1);
       audio.muted = this.isMuted;
       this.sounds.set(name, audio);
     }

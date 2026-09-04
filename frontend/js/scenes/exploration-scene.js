@@ -454,11 +454,17 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
         session.triggeredHazards.add(hazardId);
         persist?.();
         if (hazardId === "officeVaseAttack") {
+          audioManager.playSfx("flower_break");
           showHazardWarning();
         }
       },
       onPlayerDeath: showDeathScreen,
       onPrincipalStateChange: handlePrincipalStateChange,
+      onDefeatAnimationStart: (eventId) => {
+        if (eventId === "hallwayShadow") {
+          audioManager.playSfx("monster_dissolve");
+        }
+      },
       onDefeatAnimationEnd: () => persist?.({ defeatedEncounterId: undefined }),
       onComputerInteract: () => {
         if (!isPuzzleOpen) {
@@ -474,11 +480,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       onSirenDialogue: openSirenDialogue,
       onSirenFightUpdate: updateSirenHud,
       onSirenFightEnd: finishSirenFight,
-      // Placeholder: reaching the server-room final boss (흑화 최지훈) wins
-      // the run outright until the real fight replaces this trigger.
       onDefeatFinalBoss: () => {
-        audioManager.playSfx("mission_clear");
-        goTo("ending");
+        persistPosition();
+        goTo("finalBoss", { checkpoint: "intro" });
       },
     });
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
