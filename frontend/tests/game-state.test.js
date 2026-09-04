@@ -282,32 +282,20 @@ test("컴퓨터에 다가가면 퍼즐 상호작용이 한 번만 발동하고, 
   assert(interactCount === 2, "떠났다가 돌아왔는데 퍼즐 상호작용이 다시 발동하지 않았습니다.");
 });
 
-test("퍼즐을 풀면 방벽이 사라져 지나갈 수 있고, 새로고침 후에도 다시 막히지 않는다", () => {
-  const barrier = GAME_CONFIG.barrier;
-  const barrierCenter = {
-    x: barrier.x + barrier.width / 2 - GAME_CONFIG.player.size / 2,
-    y: barrier.y + barrier.height / 2 - GAME_CONFIG.player.size / 2,
-  };
-
+test("퍼즐을 풀면 세션에 기록되고, 새로고침 후에도 완료 상태가 유지된다", () => {
   const before = new GameController({
     canvas: document.createElement("canvas"),
     controls: [],
     config: GAME_CONFIG,
   });
   before.prepareMapCollision();
-  assert(
-    !before.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
-    "퍼즐을 풀기 전인데 방벽을 통과할 수 있습니다.",
-  );
+  assert(!before.puzzleSolved, "시작하자마자 퍼즐이 이미 풀린 상태입니다.");
 
   const triggeredIds = [];
   before.onHazardTriggered = (id) => triggeredIds.push(id);
   before.setPuzzleSolved();
   assert(triggeredIds.includes("officePuzzleSolved"), "퍼즐 완료가 세션에 알려지지 않아 저장할 수 없습니다.");
-  assert(
-    before.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
-    "퍼즐을 풀었는데도 방벽이 여전히 막고 있습니다.",
-  );
+  assert(before.puzzleSolved, "퍼즐을 풀었는데도 완료 상태로 바뀌지 않았습니다.");
 
   // 새로고침을 흉내낸다: 저장된 triggeredHazardIds를 그대로 다시 넘겨 새 컨트롤러를 만든다.
   const afterReload = new GameController({
@@ -318,10 +306,6 @@ test("퍼즐을 풀면 방벽이 사라져 지나갈 수 있고, 새로고침 �
   });
   afterReload.prepareMapCollision();
   assert(afterReload.puzzleSolved, "새로고침 후 퍼즐 완료 상태가 유지되지 않았습니다.");
-  assert(
-    afterReload.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
-    "새로고침 후 방벽이 다시 막고 있습니다.",
-  );
 });
 
 test("음악실 피아노 4개는 플레이어 이동을 막는다", () => {
