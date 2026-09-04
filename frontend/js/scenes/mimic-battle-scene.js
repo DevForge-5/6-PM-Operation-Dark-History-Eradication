@@ -1,4 +1,5 @@
 import { applyHpDelta, isHpDepleted } from "../game/game-state.js";
+import { setGameTimerPaused } from "../game/game-timer.js";
 import { audioManager } from "../audio/audio-manager.js";
 import { ITEMS } from "../data/items.js";
 import { createPauseOverlay } from "../ui/pause-overlay.js";
@@ -162,7 +163,7 @@ function createMessageBox({ root, isPaused }) {
   return { node, showMessage, showChoice, showFightMenu, destroy };
 }
 
-export function createMimicBattleScene({ root, config, session, payload, goTo, persist }) {
+export function createMimicBattleScene({ root, config, session, payload, goTo, startRun, persist }) {
   const { mimicMaxHp, playerAttackDamage, mimicAttackDamage, warmupEvasionBonus, rewardItemId } = config.mimicBattle;
   const { mouthOpenFrameCount, deathFrameCount } = config.mimicBattle;
   const assets = config.assets.mimicBattle;
@@ -178,6 +179,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
   let isDefending = false;
   let evasionBonus = payload?.evasionBonus ?? 0;
   let mimicDefeated = false;
+  let playerDefeated = false;
   let isPaused = false;
   let pauseOverlay = null;
 
@@ -199,7 +201,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
   }
 
   function handlePauseKey(event) {
-    if (event.code !== "Escape") {
+    if (event.code !== "Escape" || playerDefeated) {
       return;
     }
     event.preventDefault();
@@ -214,6 +216,26 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
     persist?.({ player: payload?.player, phase: "battle", mimicHp, evasionBonus });
   }
 
+  function showDeathScreen() {
+    if (playerDefeated) {
+      return;
+    }
+    playerDefeated = true;
+    pauseOverlay?.destroy();
+    pauseOverlay = null;
+    isPaused = false;
+    persistBattleState();
+    setGameTimerPaused(true);
+    audioManager.setBgmPaused(true);
+    audioManager.playSfx("game_over");
+    const deathOverlay = node?.querySelector("#mimic-death-overlay");
+    if (!deathOverlay) {
+      return;
+    }
+    deathOverlay.hidden = false;
+    deathOverlay.querySelector("#mimic-death-restart-button")?.focus();
+  }
+
   function showIntro() {
     persist?.({ player: payload?.player });
     messageBox.showMessage("앗! 야생의 미믹(이)가 나타났다!", showPrompt);
@@ -221,7 +243,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
 
   function showPrompt() {
     if (isHpDepleted(session.stats)) {
-      goTo("ending");
+      showDeathScreen();
       return;
     }
     persistBattleState();
@@ -298,6 +320,10 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
       applyHpDelta(session.stats, -mimicAttackDamage);
       updatePlayerPanel();
       audioManager.playSfx("damage");
+      if (isHpDepleted(session.stats)) {
+        showDeathScreen();
+        return;
+      }
       messageBox.showMessage(`미믹은 ${playerName}에게 ${mimicAttackDamage} 데미지를 입혔다!`, finishMimicTurn);
     });
   }
@@ -311,12 +337,17 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
     mimicDefeated = true;
     setMimicSprite("defeat");
     audioManager.playSfx("mission_clear");
-    messageBox.showMessage("미믹은 쓰러졌다.", () => {
-      session.inventory.add(rewardItemId);
-      session.clearedEvents.add("mimicBattle");
-      persist?.({ player: payload?.player, phase: "battle", mimicHp, evasionBonus });
-      messageBox.showMessage(`${playerName}는(은) 보상으로 ${ITEMS[rewardItemId]?.name ?? rewardItemId}을(를) 획득했다!`, returnToExploration);
-    });
+    persist?.({ player: payload?.player, phase: "defeat", mimicHp: 0, evasionBonus });
+    messageBox.showMessage("미믹은 쓰러졌다.", showReward);
+  }
+
+  function showReward() {
+    mimicDefeated = true;
+    setMimicSprite("defeat");
+    session.inventory.add(rewardItemId);
+    session.clearedEvents.add("mimicBattle");
+    persist?.({ player: payload?.player, phase: "reward", mimicHp: 0, evasionBonus });
+    messageBox.showMessage(`${playerName}는(은) 보상으로 ${ITEMS[rewardItemId]?.name ?? rewardItemId}을(를) 획득했다!`, returnToExploration);
   }
 
   function updatePlayerPanel() {
@@ -362,9 +393,39 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
     playerPanel.node.classList.add("mimic-battle__panel--player");
     updatePlayerPanel();
 
-    messageBox = createMessageBox({ root: node, isPaused: () => isPaused });
+    messageBox = createMessageBox({ root: node, isPaused: () => isPaused || playerDefeated });
+
+    const deathOverlay = document.createElement("section");
+    deathOverlay.id = "mimic-death-overlay";
+    deathOverlay.className = "death-overlay";
+    deathOverlay.setAttribute("aria-label", "게임 오버");
+    deathOverlay.hidden = true;
+    deathOverlay.innerHTML = `
+      <div class="death-overlay__panel">
+        <p class="death-overlay__eyebrow">MISSION FAILED</p>
+        <h2 class="death-overlay__title">GAME OVER</h2>
+        <p class="death-overlay__message">흑역사를 막지 못했습니다.</p>
+        <div class="death-overlay__actions">
+          <button id="mimic-death-restart-button" class="death-overlay__button" type="button">다시 시작</button>
+          <button id="mimic-death-home-button" class="death-overlay__button" type="button">메인 메뉴</button>
+        </div>
+      </div>
+    `;
+    node.appendChild(deathOverlay);
+    deathOverlay.querySelector("#mimic-death-restart-button").addEventListener("click", () => startRun?.({ preservePlayerName: true }));
+    deathOverlay.querySelector("#mimic-death-home-button").addEventListener("click", () => goTo("title"));
+
+    if (isHpDepleted(session.stats)) {
+      showDeathScreen();
+      return;
+    }
+
     audioManager.playSfx("warning");
-    if (payload?.phase === "battle") {
+    if (payload?.phase === "reward" || session.clearedEvents.has("mimicBattle")) {
+      showReward();
+    } else if (mimicHp <= 0 || payload?.phase === "defeat") {
+      startDefeatSequence();
+    } else if (payload?.phase === "battle") {
       showPrompt();
     } else {
       showIntro();
@@ -375,6 +436,8 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, p
     window.removeEventListener("keydown", handlePauseKey);
     pauseOverlay?.destroy();
     pauseOverlay = null;
+    setGameTimerPaused(false);
+    audioManager.setBgmPaused(false);
     messageBox?.destroy();
     messageBox = null;
     node?.remove();

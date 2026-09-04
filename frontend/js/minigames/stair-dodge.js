@@ -1,14 +1,21 @@
 import { audioManager } from "../audio/audio-manager.js";
 
 const REQUIRED_LEVELS = 4;
-const OBSTACLES_PER_LEVEL = 5;
 const HELL_MODE_LEVEL_INDEX = REQUIRED_LEVELS - 1;
 // Like Chrome's dino run: obstacles keep coming continuously within a
 // level (not one at a time with a stop after each), and both spawn rate
 // and travel speed ramp up level over level.
-const SPAWN_INTERVAL_SECONDS_BY_LEVEL = [1.3, 1.1, 0.95, 0.85];
-const CROSS_SECONDS_BY_LEVEL = [1.9, 1.65, 1.4, 1.2];
-const CHARACTER_X_RATIO = 0.24;
+export const STAIR_DODGE_LEVELS = Object.freeze([
+  Object.freeze({ spawnInterval: 1.1, crossSeconds: 1.55, requiredDodges: 5, damage: 10 }),
+  Object.freeze({ spawnInterval: 0.95, crossSeconds: 1.35, requiredDodges: 5, damage: 10 }),
+  Object.freeze({ spawnInterval: 0.8, crossSeconds: 1.15, requiredDodges: 5, damage: 10 }),
+  Object.freeze({ spawnInterval: 0.7, crossSeconds: 1, requiredDodges: 6, damage: 5 }),
+]);
+const CHARACTER_START_X_RATIO = 0.24;
+const CHARACTER_MIN_X_RATIO = 0.08;
+const CHARACTER_MAX_X_RATIO = 0.92;
+const CHARACTER_MOVE_SPEED_RATIO = 0.62;
+const COLLISION_RADIUS_RATIO = 0.075;
 const JUMP_DURATION_MS = 650;
 const MISS_RETRY_DELAY_MS = 700;
 const LEVEL_CLEAR_PAUSE_MS = 500;
@@ -16,7 +23,7 @@ const NEXT_LEVEL_DELAY_MS = 1100;
 const FINISH_DELAY_MS = 900;
 const FIRST_SPAWN_DELAY_SECONDS = 0.4;
 
-export function createStairDodge({ root, characterSprite, onComplete, onClose }) {
+export function createStairDodge({ root, characterSprite, onComplete, onClose, onDamage }) {
   const node = document.createElement("div");
   node.className = "puzzle-terminal stair-dodge";
   node.setAttribute("role", "dialog");
@@ -34,7 +41,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
         </div>
         <p class="stair-dodge__taunt" hidden>헬 모드가 시작된다 😈</p>
         <div class="stair-dodge__banner" hidden></div>
-        <p class="puzzle-terminal__hint">SPACE로 점프해서 장애물을 피하세요</p>
+        <p class="puzzle-terminal__hint">A/D 이동 · SPACE 점프</p>
       </div>
     </div>
   `;
@@ -65,6 +72,16 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
   let frameId = null;
   let jumpTimeoutId = null;
   let advanceTimeoutId = null;
+  let characterXRatio = CHARACTER_START_X_RATIO;
+  const movement = { left: false, right: false };
+
+  function getLevelSettings() {
+    return STAIR_DODGE_LEVELS[currentLevel];
+  }
+
+  function updateCharacterPosition() {
+    characterEl.style.left = `${characterXRatio * 100}%`;
+  }
 
   function updateCount() {
     countLabel.textContent = `${currentLevel} / ${REQUIRED_LEVELS}`;
@@ -72,7 +89,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
 
   function renderPips() {
     pipsEl.innerHTML = "";
-    for (let i = 0; i < OBSTACLES_PER_LEVEL; i += 1) {
+    for (let i = 0; i < getLevelSettings().requiredDodges; i += 1) {
       const pip = document.createElement("span");
       pip.className = "stair-dodge__pip";
       if (i < dodgedInLevel) {
@@ -106,6 +123,10 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     spawnedInLevel = 0;
     spawnTimer = -FIRST_SPAWN_DELAY_SECONDS;
     isAirborne = false;
+    characterXRatio = CHARACTER_START_X_RATIO;
+    movement.left = false;
+    movement.right = false;
+    updateCharacterPosition();
     levelActive = true;
     characterEl.classList.remove("stair-dodge__character--jump");
     tauntEl.hidden = currentLevel !== HELL_MODE_LEVEL_INDEX;
@@ -126,6 +147,8 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
 
   function cleanup() {
     window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keyup", handleKeyUp);
+    window.removeEventListener("blur", clearMovement);
     node.removeEventListener("click", handleClick);
     if (frameId !== null) {
       cancelAnimationFrame(frameId);
@@ -161,6 +184,13 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     clearObstacles();
     audioManager.playSfx("qte_fail");
     flashResult(false);
+    const shouldContinue = onDamage?.(getLevelSettings().damage, {
+      level: currentLevel + 1,
+      isHell: currentLevel === HELL_MODE_LEVEL_INDEX,
+    });
+    if (shouldContinue === false || finished) {
+      return;
+    }
     advanceTimeoutId = window.setTimeout(startLevel, MISS_RETRY_DELAY_MS);
   }
 
@@ -192,6 +222,20 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
       return;
     }
 
+    const direction = {
+      KeyA: "left",
+      ArrowLeft: "left",
+      KeyD: "right",
+      ArrowRight: "right",
+    }[event.code];
+    if (direction) {
+      event.preventDefault();
+      if (levelActive) {
+        movement[direction] = true;
+      }
+      return;
+    }
+
     if (event.code !== "Space") {
       return;
     }
@@ -217,6 +261,25 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     }, JUMP_DURATION_MS);
   }
 
+  function handleKeyUp(event) {
+    const direction = {
+      KeyA: "left",
+      ArrowLeft: "left",
+      KeyD: "right",
+      ArrowRight: "right",
+    }[event.code];
+    if (!direction) {
+      return;
+    }
+    event.preventDefault();
+    movement[direction] = false;
+  }
+
+  function clearMovement() {
+    movement.left = false;
+    movement.right = false;
+  }
+
   function handleClick(event) {
     if (event.target.closest("[data-action='close']")) {
       finish(false);
@@ -231,29 +294,36 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     lastTimestamp = timestamp;
 
     if (levelActive) {
-      const spawnInterval = SPAWN_INTERVAL_SECONDS_BY_LEVEL[currentLevel];
-      const crossSeconds = CROSS_SECONDS_BY_LEVEL[currentLevel];
+      const settings = getLevelSettings();
+      const spawnInterval = settings.spawnInterval;
+      const crossSeconds = settings.crossSeconds;
+      const movementDirection = Number(movement.right) - Number(movement.left);
+      characterXRatio = Math.min(
+        CHARACTER_MAX_X_RATIO,
+        Math.max(CHARACTER_MIN_X_RATIO, characterXRatio + movementDirection * CHARACTER_MOVE_SPEED_RATIO * deltaSeconds),
+      );
+      updateCharacterPosition();
 
       spawnTimer += deltaSeconds;
-      if (spawnTimer >= spawnInterval && spawnedInLevel < OBSTACLES_PER_LEVEL) {
+      if (spawnTimer >= spawnInterval && spawnedInLevel < settings.requiredDodges) {
         spawnTimer -= spawnInterval;
         spawnObstacle();
       }
 
-      // Resolve each obstacle exactly once, the instant its center passes
-      // the character's - not the instant it enters some wider "danger"
-      // band - so a jump timed anywhere before that instant still counts.
       let missed = false;
       for (const obstacle of obstacles) {
         obstacle.progress = Math.min(1, obstacle.progress + deltaSeconds / crossSeconds);
         const centerRatio = 1.1 - obstacle.progress * 1.2;
         obstacle.el.style.left = `${centerRatio * 100}%`;
 
-        if (obstacle.previousCenterRatio >= CHARACTER_X_RATIO && centerRatio < CHARACTER_X_RATIO) {
+        const collisionMin = Math.min(obstacle.previousCenterRatio, centerRatio) - COLLISION_RADIUS_RATIO;
+        const collisionMax = Math.max(obstacle.previousCenterRatio, centerRatio) + COLLISION_RADIUS_RATIO;
+        if (!isAirborne && characterXRatio >= collisionMin && characterXRatio <= collisionMax) {
+          missed = true;
+          break;
+        }
+        if (obstacle.progress >= 1) {
           obstacle.resolved = true;
-          if (!isAirborne) {
-            missed = true;
-          }
         }
         obstacle.previousCenterRatio = centerRatio;
       }
@@ -270,7 +340,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
           dodgedInLevel += stillResolved.length;
           renderPips();
 
-          if (dodgedInLevel >= OBSTACLES_PER_LEVEL) {
+          if (dodgedInLevel >= settings.requiredDodges) {
             handleLevelCleared();
           }
         }
@@ -282,6 +352,8 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
 
   node.addEventListener("click", handleClick);
   window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+  window.addEventListener("blur", clearMovement);
   closeButton.focus();
   audioManager.playSfx("qte_start");
   updateCount();
