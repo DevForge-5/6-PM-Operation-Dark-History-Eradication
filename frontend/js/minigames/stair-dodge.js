@@ -9,7 +9,7 @@ export const STAIR_DODGE_LEVELS = Object.freeze([
   Object.freeze({ spawnInterval: 1.1, crossSeconds: 1.55, requiredDodges: 5, damage: 10 }),
   Object.freeze({ spawnInterval: 0.95, crossSeconds: 1.35, requiredDodges: 5, damage: 10 }),
   Object.freeze({ spawnInterval: 0.8, crossSeconds: 1.15, requiredDodges: 5, damage: 10 }),
-  Object.freeze({ spawnInterval: 0.7, crossSeconds: 1, requiredDodges: 6, damage: 5 }),
+  Object.freeze({ spawnInterval: 0.78, crossSeconds: 1.1, requiredDodges: 6, damage: 5 }),
 ]);
 const CHARACTER_START_X_RATIO = 0.24;
 const CHARACTER_MIN_X_RATIO = 0.08;
@@ -66,6 +66,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
   let spawnTimer = 0;
   let obstacles = [];
   let isAirborne = false;
+  let bufferedJump = false;
   let levelActive = false;
   let finished = false;
   let lastTimestamp = null;
@@ -123,6 +124,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     spawnedInLevel = 0;
     spawnTimer = -FIRST_SPAWN_DELAY_SECONDS;
     isAirborne = false;
+    bufferedJump = false;
     characterXRatio = CHARACTER_START_X_RATIO;
     movement.left = false;
     movement.right = false;
@@ -217,6 +219,25 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     }, LEVEL_CLEAR_PAUSE_MS);
   }
 
+  function startJump() {
+    isAirborne = true;
+    characterEl.classList.remove("stair-dodge__character--jump");
+    // eslint-disable-next-line no-unused-expressions
+    characterEl.offsetWidth;
+    characterEl.classList.add("stair-dodge__character--jump");
+    jumpTimeoutId = window.setTimeout(() => {
+      isAirborne = false;
+      // A press that landed while still airborne (mashing ahead of the next
+      // obstacle, which is normal at hell-mode's pace) queues here instead
+      // of being silently dropped - fire it the instant this jump ends so
+      // back-to-back obstacles can be chained without missing a beat.
+      if (bufferedJump && levelActive) {
+        bufferedJump = false;
+        startJump();
+      }
+    }, JUMP_DURATION_MS);
+  }
+
   function handleKeyDown(event) {
     if (finished) {
       return;
@@ -247,18 +268,16 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     // Only the mouse click on the X (handleClick) is allowed to close it.
     event.preventDefault();
 
-    if (event.repeat || !levelActive || isAirborne) {
+    if (event.repeat || !levelActive) {
       return;
     }
 
-    isAirborne = true;
-    characterEl.classList.remove("stair-dodge__character--jump");
-    // eslint-disable-next-line no-unused-expressions
-    characterEl.offsetWidth;
-    characterEl.classList.add("stair-dodge__character--jump");
-    jumpTimeoutId = window.setTimeout(() => {
-      isAirborne = false;
-    }, JUMP_DURATION_MS);
+    if (isAirborne) {
+      bufferedJump = true;
+      return;
+    }
+
+    startJump();
   }
 
   function handleKeyUp(event) {
