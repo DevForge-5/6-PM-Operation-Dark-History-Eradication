@@ -1,11 +1,11 @@
-import { GAME_CONFIG } from "../js/config.js";
+import { GAME_CONFIG } from "../js/config.js?v=2";
 import {
   GameController,
   createWalkableTileMap,
   getCameraPosition,
   getPrincipalState,
   moveWithAxisCollisions,
-} from "../js/game/game-controller.js";
+} from "../js/game/game-controller.js?v=2";
 import {
   advanceTime,
   applyCringeDelta,
@@ -126,6 +126,19 @@ test("퍼즐 컴퓨터 2개와 교장 책상은 플레이어 이동을 막는다
     const playerY = collisionBox.y + collisionBox.height / 2 - GAME_CONFIG.player.size / 2;
     assert(!controller.canPlayerOccupy(playerX, playerY), "플레이어가 고정 오브젝트를 통과할 수 있습니다.");
   }
+});
+
+test("최종 보스 앞에 접근하면 전투 진입 범위에 들어간다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  const trigger = controller.getFinalBossBox();
+  const boss = GAME_CONFIG.finalBoss;
+
+  assert(trigger.x < boss.x && trigger.y < boss.y, "보스 진입 범위가 이미지보다 넓어야 합니다.");
+  assert(trigger.width > boss.size && trigger.height > boss.size, "보스 앞에서 진입할 수 있도록 여유 범위가 필요합니다.");
 });
 
 test("바닥 타일만 이동 가능하고 벽 타일은 차단된다", () => {
