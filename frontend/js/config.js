@@ -85,6 +85,12 @@ export const GAME_CONFIG = Object.freeze({
       principalSuspicious: "./assets/images/교장Assets/교장_확인함 1.png",
       principalAlert: "./assets/images/교장Assets/교장_확인함 2.png",
       sofa: "./assets/images/교장Assets/쇼파 1.png",
+      table: "./assets/images/교장Assets/탁자 1.png",
+      wreaths: Object.freeze([
+        "./assets/images/교장Assets/교장실_화환 1.png",
+        "./assets/images/교장Assets/교장실_화환 2.png",
+        "./assets/images/교장Assets/교장실_화환 3.png",
+      ]),
       vases: Object.freeze([
         "./assets/images/교장Assets/꽃병 1.png",
         "./assets/images/교장Assets/꽃병 2.png",
@@ -165,6 +171,12 @@ export const GAME_CONFIG = Object.freeze({
     y: 768,
     size: 192,
   }),
+  mimicExitBarrier: Object.freeze({
+    x: 1472,
+    y: 768,
+    width: 64,
+    height: 256,
+  }),
   mimicBattle: Object.freeze({
     mimicMaxHp: 100,
     playerAttackDamage: 25,
@@ -220,8 +232,14 @@ export const GAME_CONFIG = Object.freeze({
   ]),
   office: Object.freeze({
     bounds: Object.freeze({ x: 2304, y: 128, width: 576, height: 448 }),
-    principal: Object.freeze({ x: 2496, y: 128, size: 128 }),
+    principal: Object.freeze({ x: 2560, y: 128, size: 128 }),
     sofa: Object.freeze({ x: 2432, y: 384, width: 256, height: 64 }),
+    table: Object.freeze({ x: 2368, y: 272, width: 64, height: 128 }),
+    wreaths: Object.freeze([
+      Object.freeze({ x: 2368, y: 128, width: 64, height: 128 }),
+      Object.freeze({ x: 2432, y: 128, width: 64, height: 128 }),
+      Object.freeze({ x: 2496, y: 128, width: 64, height: 128 }),
+    ]),
     safeZone: Object.freeze({ x: 2432, y: 448, width: 256, height: 128 }),
     principalTiming: Object.freeze({ seatedSeconds: 3, suspiciousSeconds: 1, alertSeconds: 1 }),
     revealDuration: 0.65,

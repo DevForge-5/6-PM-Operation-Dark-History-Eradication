@@ -32,6 +32,7 @@ export function createTitleScene({ root, goTo, startRun, payload }) {
         <li><button type="button" class="title-scene__menu-button" data-action="option" data-sound="option_open">설정</button></li>
         <li><button type="button" class="title-scene__menu-button" data-action="exit" data-sound="leaderboard_open">순위표</button></li>
       </ul>
+      <p class="title-scene__credit">DevForg5 Team [박소연, 김래원, 장예나, 김원균, 이윤재]</p>
       <div class="title-scene__fade" aria-hidden="true"></div>
     `;
     root.appendChild(node);

@@ -93,6 +93,16 @@ class AudioManager {
     audio.play().catch(() => {});
   }
 
+  stopSfx(name) {
+    const audio = this.sounds.get(name);
+    if (!audio) {
+      return;
+    }
+    audio.pause();
+    audio.currentTime = 0;
+    this.lastPlayedAt.delete(name);
+  }
+
   playFootstep(onStairs = false) {
     if (this.isMuted) {
       return;

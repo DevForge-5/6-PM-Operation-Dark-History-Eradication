@@ -249,6 +249,7 @@ export class GameController {
     this.onSirenFightEnd = onSirenFightEnd;
     this.puzzleSolved = Boolean(triggeredHazardIds?.has("officePuzzleSolved"));
     this.mimicRoomPuzzleSolved = Boolean(triggeredHazardIds?.has("mimicRoomPuzzleSolved"));
+    this.mimicBattleCleared = Boolean(clearedEventIds?.has("mimicBattle"));
     this.sirenFightCleared = Boolean(clearedEventIds?.has(SIREN_EVENT_ID));
     this.sirenFightArmed = false;
     this.sirenFight = new SirenFight({
@@ -328,9 +329,9 @@ export class GameController {
     try {
       const [
         map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
-        earbuds, finalBoss, mimicRoomBarrier, mimicRoomComputer, principalIdle, principalSuspicious, principalAlert, sofa,
+        earbuds, finalBoss, mimicRoomBarrier, mimicRoomComputer, principalIdle, principalSuspicious, principalAlert, sofa, table,
         pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, musicRoomBeam,
-        ...vases
+        wreath1, wreath2, wreath3, ...vases
       ] = await Promise.all([
         loadImage(this.config.assets.map),
         loadImage(this.config.assets.player.down),
@@ -350,6 +351,7 @@ export class GameController {
         loadImage(this.config.assets.office.principalSuspicious),
         loadImage(this.config.assets.office.principalAlert),
         loadImage(this.config.assets.office.sofa),
+        loadImage(this.config.assets.office.table),
         loadImage(this.config.assets.musicRoom.pianoTopLeft),
         loadImage(this.config.assets.musicRoom.pianoTopRight),
         loadImage(this.config.assets.musicRoom.pianoBottomLeft),
@@ -358,6 +360,7 @@ export class GameController {
         loadImage(this.config.assets.musicRoom.siren),
         loadImage(this.config.assets.musicRoom.sirenAttack),
         loadImage(this.config.assets.musicRoom.beam),
+        ...this.config.assets.office.wreaths.map((source) => loadImage(source)),
         ...this.config.assets.office.vases.map((source) => loadImage(source)),
       ]);
 
@@ -372,7 +375,15 @@ export class GameController {
         finalBoss,
         mimicRoomBarrier,
         mimicRoomComputer,
-        office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
+        office: {
+          principalIdle,
+          principalSuspicious,
+          principalAlert,
+          sofa,
+          table,
+          wreaths: [wreath1, wreath2, wreath3],
+          vases,
+        },
         musicRoom: {
           pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, beam: musicRoomBeam,
         },
@@ -621,6 +632,44 @@ export class GameController {
     };
   }
 
+  getWreathCollisionBox(wreath) {
+    return {
+      x: wreath.x + 10,
+      y: wreath.y + 8,
+      width: wreath.width - 20,
+      height: wreath.height - 12,
+    };
+  }
+
+  getTableCollisionBox() {
+    const table = this.config.office.table;
+    return {
+      x: table.x + 4,
+      y: table.y + 2,
+      width: table.width - 8,
+      height: table.height - 4,
+    };
+  }
+
+  getComputerCollisionBox(computer) {
+    return {
+      x: computer.x + 12,
+      y: computer.y + 8,
+      width: computer.size - 24,
+      height: computer.size - 12,
+    };
+  }
+
+  getPrincipalCollisionBox() {
+    const principal = this.config.office.principal;
+    return {
+      x: principal.x + 8,
+      y: principal.y + 56,
+      width: principal.size - 16,
+      height: principal.size - 60,
+    };
+  }
+
   getPlayerFootPoint() {
     const player = this.state.player;
     return { x: player.x + player.size / 2, y: player.y + player.size - this.config.player.footInsetY };
@@ -710,6 +759,12 @@ export class GameController {
 
   get isSirenFightActive() {
     return this.sirenFight.isActive;
+  }
+
+  shouldRenderSirenBeamTrails() {
+    return !this.sirenFightCleared
+      && !this.sirenFight.isActive
+      && !this.sirenFightArmed;
   }
 
   isBoxInsideSirenArena(box) {
@@ -925,12 +980,31 @@ export class GameController {
     if (!this.mimicRoomPuzzleSolved && rectanglesOverlap(playerBox, this.config.mimicRoomBarrier)) {
       return false;
     }
+    if (!this.mimicBattleCleared && rectanglesOverlap(playerBox, this.config.mimicExitBarrier)) {
+      return false;
+    }
     if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
       return false;
     }
     if (this.config.musicRoom.pianos.some((piano) => (
       rectanglesOverlap(playerBox, this.getPianoCollisionBox(piano))
     ))) {
+      return false;
+    }
+    if (this.config.office.wreaths.some((wreath) => (
+      rectanglesOverlap(playerBox, this.getWreathCollisionBox(wreath))
+    ))) {
+      return false;
+    }
+    if (rectanglesOverlap(playerBox, this.getTableCollisionBox())) {
+      return false;
+    }
+    if ([this.config.computer, this.config.mimicRoomComputer].some((computer) => (
+      rectanglesOverlap(playerBox, this.getComputerCollisionBox(computer))
+    ))) {
+      return false;
+    }
+    if (rectanglesOverlap(playerBox, this.getPrincipalCollisionBox())) {
       return false;
     }
 
@@ -1194,6 +1268,20 @@ export class GameController {
       );
     }
 
+    const mimicExitBarrier = this.config.mimicExitBarrier;
+    if (
+      !this.mimicBattleCleared
+      && isVisible(mimicExitBarrier.x, mimicExitBarrier.y, mimicExitBarrier.width, mimicExitBarrier.height)
+    ) {
+      this.context.drawImage(
+        this.images.barrier,
+        toScreenX(mimicExitBarrier.x),
+        toScreenY(mimicExitBarrier.y),
+        toScreenSize(mimicExitBarrier.width),
+        toScreenSize(mimicExitBarrier.height),
+      );
+    }
+
     const barrier = this.config.barrier;
     if (!this.puzzleSolved && isVisible(barrier.x, barrier.y, barrier.width, barrier.height)) {
       this.context.drawImage(
@@ -1239,6 +1327,29 @@ export class GameController {
     }
 
     const office = this.config.office;
+    for (const [index, wreath] of office.wreaths.entries()) {
+      if (!isVisible(wreath.x, wreath.y, wreath.width, wreath.height)) {
+        continue;
+      }
+      this.context.drawImage(
+        this.images.office.wreaths[index],
+        toScreenX(wreath.x),
+        toScreenY(wreath.y),
+        toScreenSize(wreath.width),
+        toScreenSize(wreath.height),
+      );
+    }
+
+    if (isVisible(office.table.x, office.table.y, office.table.width, office.table.height)) {
+      this.context.drawImage(
+        this.images.office.table,
+        toScreenX(office.table.x),
+        toScreenY(office.table.y),
+        toScreenSize(office.table.width),
+        toScreenSize(office.table.height),
+      );
+    }
+
     if (isVisible(office.sofa.x, office.sofa.y, office.sofa.width, office.sofa.height)) {
       this.context.drawImage(
         this.images.office.sofa,
@@ -1350,7 +1461,7 @@ export class GameController {
     // The ambient trails are the siren's power feeding off the pianos - once
     // it's beaten the room goes quiet, and during the fight the same sprite is
     // busy flying at the player as live bolts instead.
-    if (!this.sirenFightCleared && !this.sirenFight.isActive) {
+    if (this.shouldRenderSirenBeamTrails()) {
       for (const trail of musicRoom.beamTrails) {
         const trailSize = musicRoom.beamFrameSize;
         if (!isVisible(trail.x - trailSize / 2, trail.y - trailSize / 2, trailSize, trailSize)) {

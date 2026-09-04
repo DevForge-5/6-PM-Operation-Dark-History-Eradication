@@ -30,6 +30,7 @@ export function runQte({ root, durationSeconds = 3, targetPresses = 8 }) {
       window.removeEventListener("keydown", handleKeyDown);
       cancelAnimationFrame(frameId);
       node.remove();
+      audioManager.stopSfx("qte_start");
       audioManager.playSfx(success ? "qte_success" : "qte_fail");
       resolve(success);
     }

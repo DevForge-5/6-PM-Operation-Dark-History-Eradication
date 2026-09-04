@@ -30,6 +30,8 @@ import {
   setBgmVolume,
   setSfxVolume,
 } from "../js/audio/audio-settings.js";
+import { audioManager } from "../js/audio/audio-manager.js";
+import { runQte } from "../js/minigames/qte.js";
 
 const tests = [];
 
@@ -59,6 +61,71 @@ test("새 맵 crop 크기가 게임 월드와 같다", () => {
   assert(GAME_CONFIG.mapCrop.height === GAME_CONFIG.world.height, "맵 crop 높이가 월드와 다릅니다.");
   assert(GAME_CONFIG.world.width % GAME_CONFIG.collision.tileSize === 0, "월드 너비가 충돌 타일에 맞지 않습니다.");
   assert(GAME_CONFIG.world.height % GAME_CONFIG.collision.tileSize === 0, "월드 높이가 충돌 타일에 맞지 않습니다.");
+});
+
+test("교무실 화환 3개가 교장 왼쪽에 나란히 배치된다", () => {
+  const wreaths = GAME_CONFIG.office.wreaths;
+  assert(wreaths.length === 3, "교무실 화환이 3개가 아닙니다.");
+  assert(GAME_CONFIG.assets.office.wreaths.length === 3, "화환 이미지 3개가 연결되지 않았습니다.");
+  assert(wreaths.every((wreath) => wreath.y === 128), "화환의 세로 위치가 서로 다릅니다.");
+  assert(wreaths[0].x >= GAME_CONFIG.office.bounds.x + 64, "화환이 교무실 왼쪽 벽과 겹칩니다.");
+  assert(wreaths[2].x + wreaths[2].width <= GAME_CONFIG.office.principal.x, "화환이 교장과 겹칩니다.");
+});
+
+test("교무실 화환 3개는 플레이어 이동을 막는다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.prepareMapCollision();
+
+  for (const wreath of GAME_CONFIG.office.wreaths) {
+    const collisionBox = controller.getWreathCollisionBox(wreath);
+    const playerX = collisionBox.x + collisionBox.width / 2 - GAME_CONFIG.player.size / 2;
+    const playerY = collisionBox.y + collisionBox.height / 2 - GAME_CONFIG.player.size / 2;
+    assert(!controller.canPlayerOccupy(playerX, playerY), "플레이어가 화환을 통과할 수 있습니다.");
+  }
+});
+
+test("교무실 탁자는 화환 아래 소파 왼쪽에 배치되고 플레이어 이동을 막는다", () => {
+  const table = GAME_CONFIG.office.table;
+  const firstWreath = GAME_CONFIG.office.wreaths[0];
+  assert(table.x === firstWreath.x, "탁자가 첫 번째 화환과 같은 세로축에 있지 않습니다.");
+  assert(table.y >= firstWreath.y + firstWreath.height, "탁자가 화환과 겹칩니다.");
+  assert(table.x + table.width <= GAME_CONFIG.office.sofa.x, "탁자가 소파와 겹칩니다.");
+
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.prepareMapCollision();
+  const collisionBox = controller.getTableCollisionBox();
+  const playerX = collisionBox.x + collisionBox.width / 2 - GAME_CONFIG.player.size / 2;
+  const playerY = collisionBox.y + collisionBox.height / 2 - GAME_CONFIG.player.size / 2;
+  assert(!controller.canPlayerOccupy(playerX, playerY), "플레이어가 교무실 탁자를 통과할 수 있습니다.");
+});
+
+test("퍼즐 컴퓨터 2개와 교장 책상은 플레이어 이동을 막는다", () => {
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.prepareMapCollision();
+
+  const collisionBoxes = [
+    controller.getComputerCollisionBox(GAME_CONFIG.computer),
+    controller.getComputerCollisionBox(GAME_CONFIG.mimicRoomComputer),
+    controller.getPrincipalCollisionBox(),
+  ];
+
+  for (const collisionBox of collisionBoxes) {
+    const playerX = collisionBox.x + collisionBox.width / 2 - GAME_CONFIG.player.size / 2;
+    const playerY = collisionBox.y + collisionBox.height / 2 - GAME_CONFIG.player.size / 2;
+    assert(!controller.canPlayerOccupy(playerX, playerY), "플레이어가 고정 오브젝트를 통과할 수 있습니다.");
+  }
 });
 
 test("바닥 타일만 이동 가능하고 벽 타일은 차단된다", () => {
@@ -248,7 +315,11 @@ test("한 번 발동한 꽃병 함정은 새로고침 후 다시 떨어지지 �
 
 test("컴퓨터에 다가가면 퍼즐 상호작용이 한 번만 발동하고, 떠났다 돌아오면 다시 발동한다", () => {
   const computer = GAME_CONFIG.computer;
-  const insideComputer = { x: computer.x, y: computer.y, facing: "down" };
+  const insideComputer = {
+    x: computer.x,
+    y: computer.y + computer.size - GAME_CONFIG.player.collisionTop - 1,
+    facing: "up",
+  };
   const farAway = { x: 0, y: 0, facing: "down" };
 
   let interactCount = 0;
@@ -261,9 +332,14 @@ test("컴퓨터에 다가가면 퍼즐 상호작용이 한 번만 발동하고, 
       interactCount += 1;
     },
   });
+  controller.prepareMapCollision();
 
   controller.updateComputerInteraction();
   assert(interactCount === 0, "컴퓨터에서 먼 곳에 있는데 상호작용이 발동했습니다.");
+  assert(
+    controller.canPlayerOccupy(insideComputer.x, insideComputer.y),
+    "컴퓨터 바로 앞의 상호작용 위치까지 접근할 수 없습니다.",
+  );
 
   controller.state.player.x = insideComputer.x;
   controller.state.player.y = insideComputer.y;
@@ -365,6 +441,39 @@ test("2차 미니게임을 풀면 서버실 통로의 방벽이 사라져 지나
   );
 });
 
+test("미믹 방의 왼쪽 출구는 미믹 처치 후에만 열린다", () => {
+  const barrier = GAME_CONFIG.mimicExitBarrier;
+  const exitCenter = {
+    x: barrier.x + barrier.width / 2 - GAME_CONFIG.player.size / 2,
+    y: barrier.y + barrier.height / 2 - GAME_CONFIG.player.size / 2,
+  };
+
+  const before = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    clearedEventIds: new Set(),
+  });
+  before.prepareMapCollision();
+  assert(
+    !before.canPlayerOccupy(exitCenter.x, exitCenter.y),
+    "미믹을 처치하기 전인데 왼쪽 출구로 우회할 수 있습니다.",
+  );
+
+  const after = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    clearedEventIds: new Set(["mimicBattle"]),
+  });
+  after.prepareMapCollision();
+  assert(after.mimicBattleCleared, "저장된 미믹 클리어 상태를 불러오지 못했습니다.");
+  assert(
+    after.canPlayerOccupy(exitCenter.x, exitCenter.y),
+    "미믹을 처치했는데도 왼쪽 출구가 열리지 않았습니다.",
+  );
+});
+
 test("음악실 피아노 4개는 플레이어 이동을 막는다", () => {
   const controller = new GameController({
     canvas: document.createElement("canvas"),
@@ -455,6 +564,9 @@ test("세이렌전은 음악실에 들어서면 시작되고 전투 중에는 �
   controller.state.player.y = insideY;
   controller.updateSirenFight(0.016);
   assert(triggered.length === 1, "음악실에 들어섰는데 세이렌전이 시작되지 않았습니다.");
+  assert(!controller.isSirenFightActive, "첫 조우 대화 전에 세이렌전 공격이 시작됐습니다.");
+  assert(controller.sirenFight.projectiles.length === 0, "첫 조우 대화 중에 피아노 장풍이 생성됐습니다.");
+  assert(!controller.shouldRenderSirenBeamTrails(), "첫 조우 대화 중에 장식용 피아노 장풍이 표시됩니다.");
 
   controller.startSirenFight();
   assert(controller.isSirenFightActive, "세이렌전이 활성화되지 않았습니다.");
@@ -999,6 +1111,27 @@ test("오디오 볼륨은 저장되고 등록된 오디오 객체에 즉시 적�
     unregisterBgm();
     setSfxVolume(original.sfx);
     setBgmVolume(original.bgm);
+  }
+});
+
+test("QTE가 끝나면 시작 효과음을 즉시 정지한다", async () => {
+  const root = document.createElement("div");
+  document.body.appendChild(root);
+  const stopped = [];
+  const originalPlaySfx = audioManager.playSfx;
+  const originalStopSfx = audioManager.stopSfx;
+  audioManager.playSfx = () => {};
+  audioManager.stopSfx = (name) => stopped.push(name);
+
+  try {
+    const result = runQte({ root, durationSeconds: 3, targetPresses: 1 });
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }));
+    assert(await result, "성공 조건을 채운 QTE가 실패했습니다.");
+    assert(stopped.includes("qte_start"), "QTE 종료 후 시작 효과음이 정지되지 않았습니다.");
+  } finally {
+    audioManager.playSfx = originalPlaySfx;
+    audioManager.stopSfx = originalStopSfx;
+    root.remove();
   }
 });
 

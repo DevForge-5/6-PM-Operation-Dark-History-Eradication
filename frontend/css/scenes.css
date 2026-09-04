@@ -108,6 +108,20 @@
   margin-right: 8px;
 }
 
+.title-scene__credit {
+  position: absolute;
+  right: max(clamp(16px, 2vw, 40px), env(safe-area-inset-right));
+  bottom: max(clamp(14px, 2vh, 28px), env(safe-area-inset-bottom));
+  max-width: min(62vw, 760px);
+  margin: 0;
+  font-family: "Galmuri11", monospace;
+  font-size: clamp(11px, 1.15vw, 22px);
+  line-height: 1.4;
+  color: rgb(255 255 255 / 78%);
+  text-align: right;
+  text-shadow: 2px 2px #160b08;
+}
+
 /* Story scene */
 .story-scene {
   overflow: hidden;
