@@ -4,6 +4,7 @@ import { ITEMS } from "../data/items.js";
 import { setGameTimerPaused, startGameTimer } from "../game/game-timer.js";
 import { createOptionModal } from "../ui/option-modal.js";
 import { createPuzzleTerminal } from "../minigames/puzzle-terminal.js";
+import { createStairDodge } from "../minigames/stair-dodge.js";
 import { createDialogBox } from "../ui/dialog.js";
 import { createChoicePanel } from "../ui/choice-panel.js";
 import { EVENTS } from "../data/events.js";
@@ -35,6 +36,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
   let isSettingsOpen = false;
   let puzzleTerminal = null;
   let isPuzzleOpen = false;
+  let stairDodge = null;
+  let isStairDodgeOpen = false;
   let lastFootstepAt = 0;
   let lastPlayerPosition = null;
   let sirenDialog = null;
@@ -65,6 +68,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       || isForcePaused
       || isSettingsOpen
       || isPuzzleOpen
+      || isStairDodgeOpen
       || isSirenDialogueOpen;
     controller.setPaused(shouldPauseGame);
     setGameTimerPaused(shouldPauseGame);
@@ -125,13 +129,34 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     syncPauseState();
   }
 
+  function openStairDodge() {
+    isStairDodgeOpen = true;
+    syncPauseState();
+    stairDodge = createStairDodge({
+      root: node.querySelector(".game-stage"),
+      characterSprite: config.assets.player.down,
+      onComplete: () => {
+        controller.setMimicRoomPuzzleSolved();
+        closeStairDodge();
+      },
+      onClose: closeStairDodge,
+    });
+  }
+
+  function closeStairDodge() {
+    stairDodge?.destroy();
+    stairDodge = null;
+    isStairDodgeOpen = false;
+    syncPauseState();
+  }
+
   function handlePauseKey(event) {
     if (event.code !== "Escape") {
       return;
     }
 
     event.preventDefault();
-    if (isSettingsOpen || isPuzzleOpen || isSirenDialogueOpen || controller?.isInputLocked) {
+    if (isSettingsOpen || isPuzzleOpen || isStairDodgeOpen || isSirenDialogueOpen || controller?.isInputLocked) {
       return;
     }
     setPauseMenuOpen(!isPauseMenuOpen);
@@ -440,6 +465,11 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
           openPuzzle();
         }
       },
+      onMimicRoomComputerInteract: () => {
+        if (!isStairDodgeOpen) {
+          openStairDodge();
+        }
+      },
       onSirenFightTrigger: startSirenIntro,
       onSirenDialogue: openSirenDialogue,
       onSirenFightUpdate: updateSirenHud,
@@ -483,6 +513,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     optionModal = null;
     puzzleTerminal?.destroy();
     puzzleTerminal = null;
+    stairDodge?.destroy();
+    stairDodge = null;
     sirenChoicePanel?.destroy();
     sirenChoicePanel = null;
     sirenDialog?.destroy();

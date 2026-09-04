@@ -324,6 +324,47 @@ test("퍼즐을 풀면 방벽이 사라져 지나갈 수 있고, 새로고침 �
   );
 });
 
+test("2차 미니게임을 풀면 서버실 통로의 방벽이 사라져 지나갈 수 있고, 새로고침 후에도 다시 막히지 않는다", () => {
+  const barrier = GAME_CONFIG.mimicRoomBarrier;
+  const barrierCenter = {
+    x: barrier.x + barrier.width / 2 - GAME_CONFIG.player.size / 2,
+    y: barrier.y + barrier.height / 2 - GAME_CONFIG.player.size / 2,
+  };
+
+  const before = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  before.prepareMapCollision();
+  assert(
+    !before.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
+    "미니게임을 풀기 전인데 방벽을 통과할 수 있습니다.",
+  );
+
+  const triggeredIds = [];
+  before.onHazardTriggered = (id) => triggeredIds.push(id);
+  before.setMimicRoomPuzzleSolved();
+  assert(triggeredIds.includes("mimicRoomPuzzleSolved"), "미니게임 완료가 세션에 알려지지 않아 저장할 수 없습니다.");
+  assert(
+    before.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
+    "미니게임을 풀었는데도 방벽이 여전히 막고 있습니다.",
+  );
+
+  const afterReload = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+    triggeredHazardIds: new Set(triggeredIds),
+  });
+  afterReload.prepareMapCollision();
+  assert(afterReload.mimicRoomPuzzleSolved, "새로고침 후 미니게임 완료 상태가 유지되지 않았습니다.");
+  assert(
+    afterReload.canPlayerOccupy(barrierCenter.x, barrierCenter.y),
+    "새로고침 후 방벽이 다시 막고 있습니다.",
+  );
+});
+
 test("음악실 피아노 4개는 플레이어 이동을 막는다", () => {
   const controller = new GameController({
     canvas: document.createElement("canvas"),

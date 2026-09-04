@@ -197,6 +197,7 @@ export class GameController {
     reducedMotion = false,
     onHazardTriggered,
     onComputerInteract,
+    onMimicRoomComputerInteract,
     onSirenFightTrigger,
     onSirenDialogue,
     onSirenFightEnd,
@@ -243,9 +244,11 @@ export class GameController {
     this.onDefeatAnimationEnd = onDefeatAnimationEnd;
     this.onHazardTriggered = onHazardTriggered;
     this.onComputerInteract = onComputerInteract;
+    this.onMimicRoomComputerInteract = onMimicRoomComputerInteract;
     this.onSirenFightTrigger = onSirenFightTrigger;
     this.onSirenFightEnd = onSirenFightEnd;
     this.puzzleSolved = Boolean(triggeredHazardIds?.has("officePuzzleSolved"));
+    this.mimicRoomPuzzleSolved = Boolean(triggeredHazardIds?.has("mimicRoomPuzzleSolved"));
     this.sirenFightCleared = Boolean(clearedEventIds?.has(SIREN_EVENT_ID));
     this.sirenFightArmed = false;
     this.sirenFight = new SirenFight({
@@ -260,6 +263,7 @@ export class GameController {
     this.onDefeatFinalBoss = onDefeatFinalBoss;
     this.finalBossDefeated = false;
     this.isNearComputer = false;
+    this.isNearMimicRoomComputer = false;
     this.triggeredEncounterId = null;
     this.viewport = { ...config.canvas };
     this.images = null;
@@ -695,6 +699,15 @@ export class GameController {
     this.onHazardTriggered?.("officePuzzleSolved");
   }
 
+  setMimicRoomPuzzleSolved() {
+    if (this.mimicRoomPuzzleSolved) {
+      return;
+    }
+
+    this.mimicRoomPuzzleSolved = true;
+    this.onHazardTriggered?.("mimicRoomPuzzleSolved");
+  }
+
   get isSirenFightActive() {
     return this.sirenFight.isActive;
   }
@@ -794,6 +807,24 @@ export class GameController {
     this.isNearComputer = isOverlapping;
   }
 
+  updateMimicRoomComputerInteraction() {
+    if (this.mimicRoomPuzzleSolved) {
+      this.isNearMimicRoomComputer = false;
+      return;
+    }
+
+    const computer = this.config.mimicRoomComputer;
+    const computerBox = { x: computer.x, y: computer.y, width: computer.size, height: computer.size };
+    const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
+    const isOverlapping = rectanglesOverlap(playerBox, computerBox);
+
+    if (isOverlapping && !this.isNearMimicRoomComputer) {
+      this.onMimicRoomComputerInteract?.();
+    }
+
+    this.isNearMimicRoomComputer = isOverlapping;
+  }
+
   launchVaseAttack() {
     const attack = this.config.office.vaseAttack;
     const sourceIndex = attack.sourceVaseIndexes[this.vaseAttack.nextShot];
@@ -891,7 +922,7 @@ export class GameController {
     if (!this.puzzleSolved && rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
       return false;
     }
-    if (rectanglesOverlap(playerBox, this.config.mimicRoomBarrier)) {
+    if (!this.mimicRoomPuzzleSolved && rectanglesOverlap(playerBox, this.config.mimicRoomBarrier)) {
       return false;
     }
     if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
@@ -969,6 +1000,7 @@ export class GameController {
     this.state.player.facing = getFacingDirection(movement, this.state.player.facing);
     this.updateOfficeHazards(deltaSeconds);
     this.updateComputerInteraction();
+    this.updateMimicRoomComputerInteraction();
     this.updateSirenFight(deltaSeconds);
 
     if (isMoving) {
@@ -1185,7 +1217,7 @@ export class GameController {
     }
 
     const mimicRoomBarrier = this.config.mimicRoomBarrier;
-    if (isVisible(mimicRoomBarrier.x, mimicRoomBarrier.y, mimicRoomBarrier.width, mimicRoomBarrier.height)) {
+    if (!this.mimicRoomPuzzleSolved && isVisible(mimicRoomBarrier.x, mimicRoomBarrier.y, mimicRoomBarrier.width, mimicRoomBarrier.height)) {
       this.context.drawImage(
         this.images.mimicRoomBarrier,
         toScreenX(mimicRoomBarrier.x),

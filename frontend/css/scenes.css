@@ -896,6 +896,85 @@
   font-size: clamp(9px, 1.8vw, 12px);
 }
 
+.stair-dodge__screen {
+  position: relative;
+}
+
+.stair-dodge__stage {
+  position: relative;
+  width: 100%;
+  height: clamp(140px, 32vh, 220px);
+  overflow: hidden;
+}
+
+.stair-dodge__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18%;
+  height: 6px;
+  background: #7dff5a;
+  box-shadow: 0 0 8px rgb(125 255 90 / 60%);
+}
+
+.stair-dodge__character {
+  position: absolute;
+  bottom: calc(18% + 3px);
+  left: 24%;
+  transform: translateX(-50%);
+  width: clamp(36px, 9vw, 56px);
+  aspect-ratio: 1;
+  /* playerAction/Front.png is a 4-frame walk sheet (256x64) - stretch it
+     to 400% width / 100% height so frame 0 alone fills this square box. */
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+}
+
+.stair-dodge__character--jump {
+  animation: stair-dodge-jump 480ms ease-out;
+}
+
+.stair-dodge__obstacle {
+  position: absolute;
+  bottom: calc(18% + 3px);
+  width: clamp(46px, 11vw, 66px);
+  height: clamp(18px, 4vw, 26px);
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #ff5b47, #c81f16);
+  border: 3px solid #6e0f0a;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 40%);
+}
+
+.stair-dodge__taunt {
+  margin: 0;
+  color: #ff5a7a;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(10px, 2vw, 14px);
+  text-align: center;
+}
+
+.stair-dodge__banner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #050505;
+  color: #d7ff2e;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(22px, 6vw, 38px);
+  text-align: center;
+  line-height: 1.7;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgb(215 255 46 / 60%);
+}
+
+.stair-dodge__banner[hidden] {
+  display: none;
+}
+
 /* Ending scene */
 .ending-scene {
   display: grid;
