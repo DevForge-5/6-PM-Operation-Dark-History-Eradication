@@ -30,10 +30,12 @@ const SOUND_PATHS = Object.freeze({
   game_over: `${AUDIO_ROOT}/sfx/events/game_over.ogg`,
   mission_clear: `${AUDIO_ROOT}/sfx/events/mission_clear.ogg`,
   monster_dissolve: `${AUDIO_ROOT}/sfx/events/miss.wav`,
+  flower_break: `${AUDIO_ROOT}/sfx/events/flower.wav`,
 });
 
 const SOUND_VOLUME_SCALES = Object.freeze({
   monster_dissolve: 0.75,
+  flower_break: 0.9,
 });
 
 const FOOTSTEPS = Array.from(

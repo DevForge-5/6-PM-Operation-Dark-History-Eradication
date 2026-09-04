@@ -241,6 +241,11 @@ test("한 번 발동한 꽃병 함정은 새로고침 후 다시 떨어지지 �
   firstVisit.updateOfficeHazards(0.016);
   assert(firstVisit.vaseAttack.triggered, "발동 구역을 밟았는데 꽃병 함정이 발동하지 않았습니다.");
   assert(triggeredIds.includes("officeVaseAttack"), "함정 발동이 세션에 알려지지 않아 저장할 수 없습니다.");
+  firstVisit.updateOfficeHazards(0.016);
+  assert(
+    triggeredIds.filter((id) => id === "officeVaseAttack").length === 1,
+    "같은 구역에 머무는 동안 꽃병 트리거가 중복 호출됐습니다.",
+  );
 
   // 새로고침을 흉내낸다: 저장된 triggeredHazardIds를 그대로 다시 넘겨 새 컨트롤러를 만든다.
   const afterReload = new GameController({

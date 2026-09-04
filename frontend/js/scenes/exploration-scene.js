@@ -454,6 +454,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
         session.triggeredHazards.add(hazardId);
         persist?.();
         if (hazardId === "officeVaseAttack") {
+          audioManager.playSfx("flower_break");
           showHazardWarning();
         }
       },
