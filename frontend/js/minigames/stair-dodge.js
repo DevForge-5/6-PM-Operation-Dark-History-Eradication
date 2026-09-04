@@ -34,6 +34,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
         </div>
         <p class="stair-dodge__taunt" hidden>헬 모드가 시작된다 😈</p>
         <div class="stair-dodge__banner" hidden></div>
+        <p class="puzzle-terminal__hint">SPACE로 점프해서 장애물을 피하세요</p>
       </div>
     </div>
   `;
@@ -191,17 +192,21 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
       return;
     }
 
-    if (event.code === "Escape") {
-      event.preventDefault();
-      finish(false);
+    if (event.code !== "Space") {
       return;
     }
 
-    if (event.code !== "Space" || event.repeat || !levelActive || isAirborne) {
-      return;
-    }
-
+    // Always swallow Space here, even on the early-return paths below - the
+    // close button holds focus (see closeButton.focus() at the bottom),
+    // and the browser's default "Space activates the focused button"
+    // behavior would otherwise close this out from under the player mid-run.
+    // Only the mouse click on the X (handleClick) is allowed to close it.
     event.preventDefault();
+
+    if (event.repeat || !levelActive || isAirborne) {
+      return;
+    }
+
     isAirborne = true;
     characterEl.classList.remove("stair-dodge__character--jump");
     // eslint-disable-next-line no-unused-expressions
