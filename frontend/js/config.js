@@ -239,6 +239,11 @@ export const GAME_CONFIG = Object.freeze({
       shotDelay: 0.55,
       damage: 30,
       projectileSize: 40,
+      // The stairwell's stone-step art ends and the music room's wood floor
+      // begins at y:640 (matches musicRoom.fight.arena.y) - despawn the vase
+      // there instead of letting it fall to the bottom of the whole world,
+      // which used to carry it straight through into the music room.
+      despawnY: 640,
     }),
   }),
   musicRoom: Object.freeze({

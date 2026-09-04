@@ -846,7 +846,7 @@ export class GameController {
         return false;
       }
 
-      return projectile.y <= this.config.world.height + size;
+      return projectile.y <= attack.despawnY;
     });
   }
 
