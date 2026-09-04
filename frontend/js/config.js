@@ -116,7 +116,7 @@ export const GAME_CONFIG = Object.freeze({
   }),
   monsterDefeat: Object.freeze({
     frameCount: 4,
-    frameDuration: 0.14,
+    frameDuration: 0.28,
   }),
   mapCrop: Object.freeze({
     x: 301,

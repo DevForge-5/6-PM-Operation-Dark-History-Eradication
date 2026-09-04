@@ -459,6 +459,11 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       },
       onPlayerDeath: showDeathScreen,
       onPrincipalStateChange: handlePrincipalStateChange,
+      onDefeatAnimationStart: (eventId) => {
+        if (eventId === "hallwayShadow") {
+          audioManager.playSfx("monster_dissolve");
+        }
+      },
       onDefeatAnimationEnd: () => persist?.({ defeatedEncounterId: undefined }),
       onComputerInteract: () => {
         if (!isPuzzleOpen) {

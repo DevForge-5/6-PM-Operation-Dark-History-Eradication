@@ -192,6 +192,7 @@ export class GameController {
     onReady,
     onIntroRevealEnd,
     onPrincipalStateChange,
+    onDefeatAnimationStart,
     onDefeatAnimationEnd,
     playIntroReveal = false,
     reducedMotion = false,
@@ -241,6 +242,7 @@ export class GameController {
     this.onReady = onReady;
     this.onIntroRevealEnd = onIntroRevealEnd;
     this.onPrincipalStateChange = onPrincipalStateChange;
+    this.onDefeatAnimationStart = onDefeatAnimationStart;
     this.onDefeatAnimationEnd = onDefeatAnimationEnd;
     this.onHazardTriggered = onHazardTriggered;
     this.onComputerInteract = onComputerInteract;
@@ -278,6 +280,7 @@ export class GameController {
     ) ?? null;
     if (this.defeatAnimation) {
       this.defeatAnimation.elapsedSeconds = 0;
+      this.onDefeatAnimationStart?.(this.defeatAnimation.eventId);
     }
     this.isInPrincipalDanger = false;
     this.isInOffice = false;
