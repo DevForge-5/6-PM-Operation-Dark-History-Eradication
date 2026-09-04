@@ -132,6 +132,6 @@
 
 @keyframes stair-dodge-jump {
   0% { transform: translateX(-50%) translateY(0); }
-  40% { transform: translateX(-50%) translateY(-76px); }
+  40% { transform: translateX(-50%) translateY(-96px); }
   100% { transform: translateX(-50%) translateY(0); }
 }

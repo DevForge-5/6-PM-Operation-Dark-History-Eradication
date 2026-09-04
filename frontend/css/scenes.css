@@ -933,7 +933,9 @@
 }
 
 .stair-dodge__character--jump {
-  animation: stair-dodge-jump 480ms ease-out;
+  /* Must match JUMP_DURATION_MS in stair-dodge.js - the airborne window
+     (immune to the obstacle) is timed off that constant, not this CSS. */
+  animation: stair-dodge-jump 650ms ease-out;
 }
 
 .stair-dodge__obstacle {
