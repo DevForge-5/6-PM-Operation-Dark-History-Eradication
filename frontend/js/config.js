@@ -176,12 +176,6 @@ export const GAME_CONFIG = Object.freeze({
     width: 64,
     height: 256,
   }),
-  mimicRoomBarrier: Object.freeze({
-    x: 1472,
-    y: 832,
-    width: 64,
-    height: 128,
-  }),
   computer: Object.freeze({
     x: 2304,
     y: 768,
