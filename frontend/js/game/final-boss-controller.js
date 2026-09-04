@@ -165,7 +165,10 @@ export class FinalBossController {
   updatePhaseTwo() {
     this.moveBossToward(this.canvas.width / 2, 105, 2.5);
     if (this.boss.timer <= 0) {
-      const special = this.patternIndex % 3 === 2;
+      // Phase 2 is a short reflection tutorial: surface a readable counter
+      // projectile every other volley instead of making the player wait
+      // through two full normal spreads for each opening.
+      const special = this.patternIndex % 2 === 1;
       this.fireAtPlayer(special, 185 + this.phaseHits * 8);
       if (!special) this.fireSpread(3, 150 + this.phaseHits * 6);
       this.patternIndex += 1;
@@ -258,7 +261,7 @@ export class FinalBossController {
       projectile.life -= delta;
       if (projectile.reflected && circlesOverlap(projectile, this.boss)) {
         projectile.life = 0;
-        this.stunBoss(2.3);
+        this.stunBoss(this.phase === FINAL_BOSS_PHASE.PROJECTILES ? 3 : 2.3);
       } else if (!projectile.reflected && circlesOverlap(projectile, this.player)) {
         projectile.life = 0;
         this.damagePlayer(projectile.special ? 8 : 11);
@@ -359,7 +362,9 @@ export class FinalBossController {
   }
 
   damageBoss() {
-    const damage = this.phase === 4 ? 10 : 12.5;
+    // A successful Phase 2 reflection already carries most of the execution
+    // difficulty, so one close-range punish advances the fight to Phase 3.
+    const damage = this.phase === FINAL_BOSS_PHASE.PROJECTILES ? 25 : (this.phase === 4 ? 10 : 12.5);
     this.boss.hp = Math.max(0, this.boss.hp - damage);
     this.phaseHits += 1;
     this.boss.vulnerable = Math.min(this.boss.vulnerable, 0.35);

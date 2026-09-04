@@ -1,4 +1,4 @@
-import { FinalBossController, FINAL_BOSS_PHASE, circlesOverlap } from "../js/game/final-boss-controller.js?v=4";
+import { FinalBossController, FINAL_BOSS_PHASE, circlesOverlap } from "../js/game/final-boss-controller.js?v=6";
 import { canTriggerEnding } from "../js/game/ending-flow.js?v=4";
 
 function assert(condition, message = "assertion failed") {
@@ -51,9 +51,7 @@ for (let index = 0; index < 2; index += 1) {
 assert(phaseTest.phase === FINAL_BOSS_PHASE.PROJECTILES, "75%에서 Phase 2로 전환되어야 합니다.");
 phaseTest.projectiles.push({ life: 1 });
 phaseTest.waves.push({ life: 1 });
-for (let index = 0; index < 2; index += 1) {
-  phaseTest.boss.vulnerable = 1; phaseTest.player.attackCooldown = 0; phaseTest.attack();
-}
+phaseTest.boss.vulnerable = 1; phaseTest.player.attackCooldown = 0; phaseTest.attack();
 assert(phaseTest.phase === FINAL_BOSS_PHASE.OVERLOAD, "50%에서 Phase 3으로 전환되어야 합니다.");
 assert(phaseTest.projectiles.length === 0, "페이즈 전환 시 이전 투사체를 정리해야 합니다.");
 assert(phaseTest.waves.length === 0, "페이즈 전환 시 이전 파동을 정리해야 합니다.");
@@ -68,6 +66,11 @@ assert(phaseTest.phase === FINAL_BOSS_PHASE.DEFEATED, "Phase 4 체력이 0이면
 
 const reflectTest = createController();
 reflectTest.phase = FINAL_BOSS_PHASE.PROJECTILES;
+reflectTest.patternIndex = 1;
+reflectTest.boss.timer = 0;
+reflectTest.updatePhaseTwo();
+assert(reflectTest.projectiles.some((projectile) => projectile.special), "Phase 2에서 두 번째 발사 안에 반사탄이 나와야 합니다.");
+reflectTest.projectiles = [];
 reflectTest.projectiles.push({ x: reflectTest.player.x + 10, y: reflectTest.player.y, vx: 0, vy: 0, radius: 14, special: true, reflected: false, homing: 0, life: 3 });
 reflectTest.attack();
 assert(reflectTest.projectiles[0].reflected, "특수 투사체는 공격 키로 반사되어야 합니다.");
