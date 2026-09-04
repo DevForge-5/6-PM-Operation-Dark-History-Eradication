@@ -73,6 +73,10 @@ export const GAME_CONFIG = Object.freeze({
     barrier: "./assets/images/방벽 1.png",
     computer: "./assets/images/컴퓨터 1.png",
     earbuds: "./assets/images/에어팟 1.png",
+    // Second minigame gate, on the corridor between the server room and the
+    // mimic - distinct art from the office/computer barrier pair above.
+    mimicRoomBarrier: "./assets/images/2차미니게임기둥벽.png",
+    mimicRoomComputer: "./assets/images/2차미니게임컴퓨터.png",
     // Placeholder idle sprite for the server-room final boss (흑화 최지훈) -
     // a 4-frame sheet, only frame 0 is drawn until the real fight is built.
     finalBoss: "./assets/images/bossAction/최종보스 1.png",
@@ -178,6 +182,19 @@ export const GAME_CONFIG = Object.freeze({
   }),
   computer: Object.freeze({
     x: 2304,
+    y: 768,
+    size: 64,
+  }),
+  // Server room <-> mimic corridor gate - same shape as the office barrier
+  // pair above, positioned in the walkable gap at x:1472 (col23).
+  mimicRoomBarrier: Object.freeze({
+    x: 1472,
+    y: 768,
+    width: 64,
+    height: 256,
+  }),
+  mimicRoomComputer: Object.freeze({
+    x: 1600,
     y: 768,
     size: 64,
   }),

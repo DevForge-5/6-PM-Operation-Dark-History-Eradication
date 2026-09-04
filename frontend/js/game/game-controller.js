@@ -324,7 +324,7 @@ export class GameController {
     try {
       const [
         map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
-        earbuds, finalBoss, principalIdle, principalSuspicious, principalAlert, sofa,
+        earbuds, finalBoss, mimicRoomBarrier, mimicRoomComputer, principalIdle, principalSuspicious, principalAlert, sofa,
         pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, musicRoomBeam,
         ...vases
       ] = await Promise.all([
@@ -340,6 +340,8 @@ export class GameController {
         loadImage(this.config.assets.computer),
         loadImage(this.config.assets.earbuds),
         loadImage(this.config.assets.finalBoss),
+        loadImage(this.config.assets.mimicRoomBarrier),
+        loadImage(this.config.assets.mimicRoomComputer),
         loadImage(this.config.assets.office.principalIdle),
         loadImage(this.config.assets.office.principalSuspicious),
         loadImage(this.config.assets.office.principalAlert),
@@ -364,6 +366,8 @@ export class GameController {
         computer,
         earbuds,
         finalBoss,
+        mimicRoomBarrier,
+        mimicRoomComputer,
         office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
         musicRoom: {
           pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, beam: musicRoomBeam,
@@ -887,6 +891,9 @@ export class GameController {
     if (!this.puzzleSolved && rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
       return false;
     }
+    if (rectanglesOverlap(playerBox, this.config.mimicRoomBarrier)) {
+      return false;
+    }
     if (rectanglesOverlap(playerBox, this.getSofaCollisionBox())) {
       return false;
     }
@@ -1174,6 +1181,28 @@ export class GameController {
         toScreenY(computer.y),
         toScreenSize(computer.size),
         toScreenSize(computer.size),
+      );
+    }
+
+    const mimicRoomBarrier = this.config.mimicRoomBarrier;
+    if (isVisible(mimicRoomBarrier.x, mimicRoomBarrier.y, mimicRoomBarrier.width, mimicRoomBarrier.height)) {
+      this.context.drawImage(
+        this.images.mimicRoomBarrier,
+        toScreenX(mimicRoomBarrier.x),
+        toScreenY(mimicRoomBarrier.y),
+        toScreenSize(mimicRoomBarrier.width),
+        toScreenSize(mimicRoomBarrier.height),
+      );
+    }
+
+    const mimicRoomComputer = this.config.mimicRoomComputer;
+    if (isVisible(mimicRoomComputer.x, mimicRoomComputer.y, mimicRoomComputer.size, mimicRoomComputer.size)) {
+      this.context.drawImage(
+        this.images.mimicRoomComputer,
+        toScreenX(mimicRoomComputer.x),
+        toScreenY(mimicRoomComputer.y),
+        toScreenSize(mimicRoomComputer.size),
+        toScreenSize(mimicRoomComputer.size),
       );
     }
 
