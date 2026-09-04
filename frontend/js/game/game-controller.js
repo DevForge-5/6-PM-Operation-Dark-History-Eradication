@@ -186,7 +186,6 @@ export class GameController {
     defeatedEncounterId,
     onFrame,
     onEncounter,
-    onReachGoal,
     onPickup,
     onDamage,
     onPlayerDeath,
@@ -235,7 +234,6 @@ export class GameController {
     this.onPickup = onPickup;
     this.onFrame = onFrame;
     this.onEncounter = onEncounter;
-    this.onReachGoal = onReachGoal;
     this.onDamage = onDamage;
     this.onPlayerDeath = onPlayerDeath;
     this.onReady = onReady;
@@ -260,7 +258,6 @@ export class GameController {
     this.onSirenFightUpdate = onSirenFightUpdate;
     this.isNearComputer = false;
     this.triggeredEncounterId = null;
-    this.goalReached = false;
     this.viewport = { ...config.canvas };
     this.images = null;
     this.walkableTiles = null;
@@ -579,11 +576,6 @@ export class GameController {
       width: encounter.size - encounter.collisionInsetX * 2,
       height: encounter.size - encounter.collisionTop - encounter.collisionBottom,
     };
-  }
-
-  getGoalBox() {
-    const goal = this.config.goal;
-    return { x: goal.x, y: goal.y, width: goal.size, height: goal.size };
   }
 
   getBarrierCollisionBox() {
@@ -983,13 +975,6 @@ export class GameController {
 
     const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
 
-    if (!this.goalReached && this.config.goal) {
-      if (rectanglesOverlap(playerBox, this.getGoalBox())) {
-        this.goalReached = true;
-        this.onReachGoal?.();
-      }
-    }
-
     for (const pickup of this.state.pickups) {
       if (!pickup.enabled) {
         continue;
@@ -1063,15 +1048,6 @@ export class GameController {
       width,
       height,
     );
-
-    if (this.config.goal && isVisible(this.config.goal.x, this.config.goal.y, this.config.goal.size, this.config.goal.size)) {
-      const goal = this.config.goal;
-      this.context.fillStyle = "rgba(120, 220, 255, 0.35)";
-      this.context.fillRect(toScreenX(goal.x), toScreenY(goal.y), toScreenSize(goal.size), toScreenSize(goal.size));
-      this.context.strokeStyle = "#78dcff";
-      this.context.lineWidth = 2;
-      this.context.strokeRect(toScreenX(goal.x), toScreenY(goal.y), toScreenSize(goal.size), toScreenSize(goal.size));
-    }
 
     for (const pickup of this.state.pickups) {
       if (!pickup.enabled || !isVisible(pickup.x, pickup.y, pickup.size, pickup.size)) {

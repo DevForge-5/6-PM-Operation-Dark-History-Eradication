@@ -347,6 +347,12 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     showSirenLines([outcome.resultText], () => {
       closeSirenDialogue();
       persistPosition();
+      // The siren is the last stage: clearing her before 6PM is what wins
+      // the run (see data/endings.js#resolveEnding - it already reads as
+      // True/Bad off the player's stats at whatever moment this fires).
+      if (hasWon) {
+        goTo("ending");
+      }
     });
   }
 
@@ -413,10 +419,6 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
         } else {
           goTo("battle", { eventId, player: { x, y, facing } });
         }
-      },
-      onReachGoal: () => {
-        audioManager.playSfx("machine_cogs");
-        goTo("ending");
       },
       onPickup: (itemId) => {
         audioManager.playSfx("item_box_open");
