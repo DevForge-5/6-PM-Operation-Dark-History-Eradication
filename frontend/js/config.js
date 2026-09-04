@@ -170,6 +170,12 @@ export const GAME_CONFIG = Object.freeze({
     mouthOpenFrameCount: 4,
     deathFrameCount: 4,
   }),
+  barrier: Object.freeze({
+    x: 2176,
+    y: 768,
+    width: 64,
+    height: 256,
+  }),
   mimicRoomBarrier: Object.freeze({
     x: 1472,
     y: 832,

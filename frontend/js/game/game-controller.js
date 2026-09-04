@@ -583,6 +583,10 @@ export class GameController {
     };
   }
 
+  getBarrierCollisionBox() {
+    return this.config.barrier;
+  }
+
   getFinalBossBox() {
     const boss = this.config.finalBoss;
     return { x: boss.x, y: boss.y, width: boss.size, height: boss.size };
@@ -880,6 +884,9 @@ export class GameController {
     }
 
     const playerBox = this.getPlayerCollisionBox(x, y);
+    if (!this.puzzleSolved && rectanglesOverlap(playerBox, this.getBarrierCollisionBox())) {
+      return false;
+    }
     if (rectanglesOverlap(playerBox, this.config.mimicRoomBarrier)) {
       return false;
     }
@@ -1148,6 +1155,17 @@ export class GameController {
         toScreenY(mimic.y),
         toScreenSize(mimic.size),
         toScreenSize(mimic.size),
+      );
+    }
+
+    const barrier = this.config.barrier;
+    if (!this.puzzleSolved && isVisible(barrier.x, barrier.y, barrier.width, barrier.height)) {
+      this.context.drawImage(
+        this.images.barrier,
+        toScreenX(barrier.x),
+        toScreenY(barrier.y),
+        toScreenSize(barrier.width),
+        toScreenSize(barrier.height),
       );
     }
 
