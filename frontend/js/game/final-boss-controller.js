@@ -10,6 +10,11 @@ export const FINAL_BOSS_PHASE = Object.freeze({
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const PHASE_TIME_LIMITS = Object.freeze({
+  [FINAL_BOSS_PHASE.PROJECTILES]: 15,
+  [FINAL_BOSS_PHASE.OVERLOAD]: 20,
+  [FINAL_BOSS_PHASE.FINAL]: 30,
+});
 
 export function circlesOverlap(a, b) {
   return distance(a, b) <= a.radius + b.radius;
@@ -47,6 +52,7 @@ export class FinalBossController {
     this.clones = [];
     this.patternIndex = 0;
     this.phaseHits = 0;
+    this.phaseElapsed = 0;
     this.defeatTimer = 0;
     this.defeatNotified = false;
     this.keys.clear();
@@ -106,6 +112,11 @@ export class FinalBossController {
     this.boss.vulnerable = Math.max(0, this.boss.vulnerable - delta);
     this.player.invulnerable = Math.max(0, this.player.invulnerable - delta);
     this.player.attackCooldown = Math.max(0, this.player.attackCooldown - delta);
+    this.phaseElapsed += delta;
+    if (this.advanceExpiredPhase()) {
+      this.emitUpdate();
+      return;
+    }
     if (this.phase === 1) this.updatePhaseOne(delta);
     if (this.phase === 2) this.updatePhaseTwo(delta);
     if (this.phase === 3) this.updatePhaseThree(delta);
@@ -114,6 +125,23 @@ export class FinalBossController {
     this.updateWaves(delta);
     this.updateHazards(delta);
     this.emitUpdate();
+  }
+
+  advanceExpiredPhase() {
+    const limit = PHASE_TIME_LIMITS[this.phase];
+    if (!limit || this.phaseElapsed < limit) return false;
+
+    if (this.phase === FINAL_BOSS_PHASE.PROJECTILES) {
+      this.boss.hp = Math.min(this.boss.hp, 50);
+      this.changePhase(FINAL_BOSS_PHASE.OVERLOAD);
+    } else if (this.phase === FINAL_BOSS_PHASE.OVERLOAD) {
+      this.boss.hp = Math.min(this.boss.hp, 25);
+      this.changePhase(FINAL_BOSS_PHASE.FINAL);
+    } else if (this.phase === FINAL_BOSS_PHASE.FINAL) {
+      this.boss.hp = 0;
+      this.defeat();
+    }
+    return true;
   }
 
   updatePlayer(delta) {
@@ -378,6 +406,7 @@ export class FinalBossController {
     this.clearAttacks();
     this.phase = nextPhase;
     this.phaseHits = 0;
+    this.phaseElapsed = 0;
     this.patternIndex = 0;
     this.boss.state = "pattern";
     this.boss.timer = nextPhase === 4 ? 2 : 1;
@@ -401,6 +430,7 @@ export class FinalBossController {
 
   defeat() {
     this.phase = FINAL_BOSS_PHASE.DEFEATED;
+    this.phaseElapsed = 0;
     this.boss.state = "defeated";
     this.clearAttacks();
     this.keys.clear();

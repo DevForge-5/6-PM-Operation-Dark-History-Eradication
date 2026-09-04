@@ -1,4 +1,4 @@
-import { FinalBossController, FINAL_BOSS_PHASE, circlesOverlap } from "../js/game/final-boss-controller.js?v=6";
+import { FinalBossController, FINAL_BOSS_PHASE, circlesOverlap } from "../js/game/final-boss-controller.js?v=7";
 import { canTriggerEnding } from "../js/game/ending-flow.js?v=4";
 
 function assert(condition, message = "assertion failed") {
@@ -74,6 +74,15 @@ reflectTest.projectiles = [];
 reflectTest.projectiles.push({ x: reflectTest.player.x + 10, y: reflectTest.player.y, vx: 0, vy: 0, radius: 14, special: true, reflected: false, homing: 0, life: 3 });
 reflectTest.attack();
 assert(reflectTest.projectiles[0].reflected, "특수 투사체는 공격 키로 반사되어야 합니다.");
+
+const phaseDeadlineTest = createController();
+phaseDeadlineTest.changePhase(FINAL_BOSS_PHASE.PROJECTILES);
+phaseDeadlineTest.update(15);
+assert(phaseDeadlineTest.phase === FINAL_BOSS_PHASE.OVERLOAD, "Phase 2는 15초 안에 Phase 3으로 전환되어야 합니다.");
+phaseDeadlineTest.update(20);
+assert(phaseDeadlineTest.phase === FINAL_BOSS_PHASE.FINAL, "Phase 3은 20초 안에 Phase 4로 전환되어야 합니다.");
+phaseDeadlineTest.update(30);
+assert(phaseDeadlineTest.phase === FINAL_BOSS_PHASE.DEFEATED, "Phase 4는 30초 안에 보스 패배 상태가 되어야 합니다.");
 
 let defeatCalls = 0;
 const defeatTest = new FinalBossController({ canvas, config: {}, stats: { hp: 100, hpMax: 100 }, images: {}, onDefeat: () => { defeatCalls += 1; } });
