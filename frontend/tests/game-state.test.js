@@ -272,6 +272,25 @@ test("낙하 꽃병은 발동 구역(계단 통로) 바로 위 선반에서 출�
   }
 });
 
+test("낙하 꽃병은 원본 크기로 떨어지고 바닥에 닿으면 파편을 남긴다", () => {
+  const attack = GAME_CONFIG.office.vaseAttack;
+  assert(attack.projectileSize === GAME_CONFIG.office.vases[0].size, "낙하 꽃병과 선반 꽃병의 크기가 다릅니다.");
+
+  const controller = new GameController({
+    canvas: document.createElement("canvas"),
+    controls: [],
+    config: GAME_CONFIG,
+  });
+  controller.vaseAttack.triggered = true;
+  controller.launchVaseAttack();
+  controller.vaseAttack.projectiles[0].y = attack.despawnY - 1;
+  controller.updateOfficeHazards(1 / attack.fallSpeed + 0.01);
+
+  assert(controller.vaseAttack.projectiles.length === 0, "바닥에 닿은 꽃병이 제거되지 않았습니다.");
+  assert(controller.vaseAttack.fragments.length === 1, "깨진 꽃병 파편이 생성되지 않았습니다.");
+  assert(controller.vaseAttack.fragments[0].bottomY === attack.despawnY, "파편이 계단 아래 경계에 놓이지 않았습니다.");
+});
+
 test("교무실 오른쪽 벽에 붙는 것만으로는 꽃병 함정이 발동하지 않는다", () => {
   // 발동 구역이 계단으로 이어지는 좁은 통로(x=2944~3072)보다 왼쪽에서 시작하면,
   // 계단 쪽으로 가지 않고 교무실 자체의 오른쪽 벽(바닥 끝 x≈2816~2879)에만 붙어도

@@ -98,6 +98,10 @@ export const GAME_CONFIG = Object.freeze({
         "./assets/images/교장Assets/꽃병 3.png",
         "./assets/images/교장Assets/꽃병 4.png",
       ]),
+      vaseFragments: Object.freeze([
+        "./assets/images/교장Assets/꽃병 파편 1.png",
+        "./assets/images/교장Assets/꽃병 파편 2.png",
+      ]),
     }),
     musicRoom: Object.freeze({
       // Each 피아노 N.png is pre-rotated so its keyboard opens toward the
@@ -276,7 +280,7 @@ export const GAME_CONFIG = Object.freeze({
       fallSpeed: 720,
       shotDelay: 0.55,
       damage: 30,
-      projectileSize: 40,
+      projectileSize: 64,
       // The stairwell's stone-step art ends and the music room's wood floor
       // begins at y:640 (matches musicRoom.fight.arena.y) - despawn the vase
       // there instead of letting it fall to the bottom of the whole world,

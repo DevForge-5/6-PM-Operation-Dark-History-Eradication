@@ -291,6 +291,16 @@ export class GameController {
     this.principalState = "seated";
     const vaseAttackAlreadyTriggered = Boolean(triggeredHazardIds?.has("officeVaseAttack"));
     const vaseSourceIndexes = config.office.vaseAttack.sourceVaseIndexes;
+    const settledVaseFragments = vaseAttackAlreadyTriggered
+      ? vaseSourceIndexes.map((sourceIndex, fragmentIndex) => {
+          const source = config.office.vases[sourceIndex];
+          return {
+            fragmentIndex,
+            x: source.x + source.size / 2,
+            bottomY: config.office.vaseAttack.despawnY,
+          };
+        })
+      : [];
     this.vaseAttack = {
       triggered: vaseAttackAlreadyTriggered,
       // Already resolved in an earlier visit to the office: skip straight to
@@ -299,6 +309,7 @@ export class GameController {
       shotDelay: 0,
       projectiles: [],
       droppedVaseIndexes: new Set(vaseAttackAlreadyTriggered ? vaseSourceIndexes : []),
+      fragments: settledVaseFragments,
     };
     this.damageFeedbackCooldown = 0;
     this.playerDefeated = false;
@@ -334,7 +345,7 @@ export class GameController {
         map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
         earbuds, finalBoss, mimicRoomBarrier, mimicRoomComputer, principalIdle, principalSuspicious, principalAlert, sofa, table,
         pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, musicRoomBeam,
-        wreath1, wreath2, wreath3, ...vases
+        wreath1, wreath2, wreath3, vaseFragment1, vaseFragment2, ...vases
       ] = await Promise.all([
         loadImage(this.config.assets.map),
         loadImage(this.config.assets.player.down),
@@ -364,6 +375,7 @@ export class GameController {
         loadImage(this.config.assets.musicRoom.sirenAttack),
         loadImage(this.config.assets.musicRoom.beam),
         ...this.config.assets.office.wreaths.map((source) => loadImage(source)),
+        ...this.config.assets.office.vaseFragments.map((source) => loadImage(source)),
         ...this.config.assets.office.vases.map((source) => loadImage(source)),
       ]);
 
@@ -385,6 +397,7 @@ export class GameController {
           sofa,
           table,
           wreaths: [wreath1, wreath2, wreath3],
+          vaseFragments: [vaseFragment1, vaseFragment2],
           vases,
         },
         musicRoom: {
@@ -893,6 +906,7 @@ export class GameController {
     this.vaseAttack.droppedVaseIndexes.add(sourceIndex);
     this.vaseAttack.projectiles.push({
       sourceIndex,
+      fragmentIndex: this.vaseAttack.nextShot,
       x: sourceCenterX,
       y: sourceCenterY,
       velocityY: attack.fallSpeed,
@@ -936,10 +950,24 @@ export class GameController {
 
       if (rectanglesOverlap(this.getPlayerCollisionBox(this.state.player.x, this.state.player.y), projectileBox)) {
         this.takeDamage(attack.damage);
+        this.vaseAttack.fragments.push({
+          fragmentIndex: projectile.fragmentIndex,
+          x: projectile.x,
+          bottomY: Math.min(projectile.y + size / 2, attack.despawnY),
+        });
         return false;
       }
 
-      return projectile.y <= attack.despawnY;
+      if (projectile.y >= attack.despawnY) {
+        this.vaseAttack.fragments.push({
+          fragmentIndex: projectile.fragmentIndex,
+          x: projectile.x,
+          bottomY: attack.despawnY,
+        });
+        return false;
+      }
+
+      return true;
     });
   }
 
@@ -1396,16 +1424,43 @@ export class GameController {
     }
 
     for (const projectile of this.vaseAttack.projectiles) {
-      if (!isVisible(projectile.x - 20, projectile.y - 20, 40, 40)) {
+      const projectileWorldSize = this.config.office.vaseAttack.projectileSize;
+      if (!isVisible(
+        projectile.x - projectileWorldSize / 2,
+        projectile.y - projectileWorldSize / 2,
+        projectileWorldSize,
+        projectileWorldSize,
+      )) {
         continue;
       }
 
-      const size = toScreenSize(this.config.office.vaseAttack.projectileSize);
+      const size = toScreenSize(projectileWorldSize);
       this.context.save();
       this.context.translate(toScreenX(projectile.x), toScreenY(projectile.y));
       this.context.rotate(Math.PI);
       this.context.drawImage(this.images.office.vases[projectile.sourceIndex], -size / 2, -size / 2, size, size);
       this.context.restore();
+    }
+
+    for (const fragment of this.vaseAttack.fragments) {
+      const fragmentWorldSize = this.config.office.vaseAttack.projectileSize;
+      if (!isVisible(
+        fragment.x - fragmentWorldSize / 2,
+        fragment.bottomY - fragmentWorldSize,
+        fragmentWorldSize,
+        fragmentWorldSize,
+      )) {
+        continue;
+      }
+
+      const size = toScreenSize(fragmentWorldSize);
+      this.context.drawImage(
+        this.images.office.vaseFragments[fragment.fragmentIndex],
+        toScreenX(fragment.x) - size / 2,
+        toScreenY(fragment.bottomY) - size,
+        size,
+        size,
+      );
     }
 
     const musicRoom = this.config.musicRoom;
