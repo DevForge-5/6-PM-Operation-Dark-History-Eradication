@@ -347,12 +347,6 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     showSirenLines([outcome.resultText], () => {
       closeSirenDialogue();
       persistPosition();
-      // The siren is the last stage: clearing her before 6PM is what wins
-      // the run (see data/endings.js#resolveEnding - it already reads as
-      // True/Bad off the player's stats at whatever moment this fires).
-      if (hasWon) {
-        goTo("ending");
-      }
     });
   }
 
@@ -450,6 +444,12 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       onSirenDialogue: openSirenDialogue,
       onSirenFightUpdate: updateSirenHud,
       onSirenFightEnd: finishSirenFight,
+      // Placeholder: reaching the server-room final boss (흑화 최지훈) wins
+      // the run outright until the real fight replaces this trigger.
+      onDefeatFinalBoss: () => {
+        audioManager.playSfx("mission_clear");
+        goTo("ending");
+      },
     });
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
     forcePauseCheckbox.addEventListener("change", () => {

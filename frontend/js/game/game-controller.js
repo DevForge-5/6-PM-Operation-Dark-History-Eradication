@@ -201,6 +201,7 @@ export class GameController {
     onSirenDialogue,
     onSirenFightEnd,
     onSirenFightUpdate,
+    onDefeatFinalBoss,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -256,6 +257,8 @@ export class GameController {
       onUpdate: (snapshot) => onSirenFightUpdate?.(snapshot),
     });
     this.onSirenFightUpdate = onSirenFightUpdate;
+    this.onDefeatFinalBoss = onDefeatFinalBoss;
+    this.finalBossDefeated = false;
     this.isNearComputer = false;
     this.triggeredEncounterId = null;
     this.viewport = { ...config.canvas };
@@ -321,7 +324,7 @@ export class GameController {
     try {
       const [
         map, playerDown, playerUp, playerLeft, playerRight, monster, monsterDefeat, mimic, barrier, computer,
-        earbuds, principalIdle, principalSuspicious, principalAlert, sofa,
+        earbuds, finalBoss, principalIdle, principalSuspicious, principalAlert, sofa,
         pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, musicRoomBeam,
         ...vases
       ] = await Promise.all([
@@ -336,6 +339,7 @@ export class GameController {
         loadImage(this.config.assets.barrier),
         loadImage(this.config.assets.computer),
         loadImage(this.config.assets.earbuds),
+        loadImage(this.config.assets.finalBoss),
         loadImage(this.config.assets.office.principalIdle),
         loadImage(this.config.assets.office.principalSuspicious),
         loadImage(this.config.assets.office.principalAlert),
@@ -359,6 +363,7 @@ export class GameController {
         barrier,
         computer,
         earbuds,
+        finalBoss,
         office: { principalIdle, principalSuspicious, principalAlert, sofa, vases },
         musicRoom: {
           pianoTopLeft, pianoTopRight, pianoBottomLeft, pianoBottomRight, pianoAttack, siren, sirenAttack, beam: musicRoomBeam,
@@ -580,6 +585,11 @@ export class GameController {
 
   getBarrierCollisionBox() {
     return this.config.barrier;
+  }
+
+  getFinalBossBox() {
+    const boss = this.config.finalBoss;
+    return { x: boss.x, y: boss.y, width: boss.size, height: boss.size };
   }
 
   getSofaCollisionBox() {
@@ -975,6 +985,13 @@ export class GameController {
 
     const playerBox = this.getPlayerCollisionBox(this.state.player.x, this.state.player.y);
 
+    if (!this.finalBossDefeated && this.config.finalBoss) {
+      if (rectanglesOverlap(playerBox, this.getFinalBossBox())) {
+        this.finalBossDefeated = true;
+        this.onDefeatFinalBoss?.();
+      }
+    }
+
     for (const pickup of this.state.pickups) {
       if (!pickup.enabled) {
         continue;
@@ -1048,6 +1065,25 @@ export class GameController {
       width,
       height,
     );
+
+    if (
+      !this.finalBossDefeated
+      && this.config.finalBoss
+      && isVisible(this.config.finalBoss.x, this.config.finalBoss.y, this.config.finalBoss.size, this.config.finalBoss.size)
+    ) {
+      const boss = this.config.finalBoss;
+      this.context.drawImage(
+        this.images.finalBoss,
+        0,
+        0,
+        boss.frameSize,
+        boss.frameSize,
+        toScreenX(boss.x),
+        toScreenY(boss.y),
+        toScreenSize(boss.size),
+        toScreenSize(boss.size),
+      );
+    }
 
     for (const pickup of this.state.pickups) {
       if (!pickup.enabled || !isVisible(pickup.x, pickup.y, pickup.size, pickup.size)) {

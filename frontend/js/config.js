@@ -73,6 +73,9 @@ export const GAME_CONFIG = Object.freeze({
     barrier: "./assets/images/방벽 1.png",
     computer: "./assets/images/컴퓨터 1.png",
     earbuds: "./assets/images/에어팟 1.png",
+    // Placeholder idle sprite for the server-room final boss (흑화 최지훈) -
+    // a 4-frame sheet, only frame 0 is drawn until the real fight is built.
+    finalBoss: "./assets/images/bossAction/최종보스 1.png",
     office: Object.freeze({
       principalIdle: "./assets/images/교장Assets/교장_눈치 못챔 2.png",
       principalSuspicious: "./assets/images/교장Assets/교장_확인함 1.png",
@@ -183,6 +186,14 @@ export const GAME_CONFIG = Object.freeze({
     x: 2304,
     y: 768,
     size: 64,
+  }),
+  // Placeholder trigger: touching him ends the run in victory until the
+  // real boss fight replaces this. Sprite sheet is 4 frames, 128px each.
+  finalBoss: Object.freeze({
+    x: 448,
+    y: 800,
+    size: 128,
+    frameSize: 128,
   }),
   pickups: Object.freeze([
     Object.freeze({
