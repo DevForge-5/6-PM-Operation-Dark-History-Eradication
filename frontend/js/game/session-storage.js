@@ -11,6 +11,10 @@ export function saveProgress(sceneName, payload, session) {
       collectedPickups: [...session.collectedPickups],
       triggeredHazards: [...session.triggeredHazards],
       playerName: session.playerName,
+      bossBattleStarted: Boolean(session.bossBattleStarted),
+      bossBattleCompleted: Boolean(session.bossBattleCompleted),
+      bossFinalStoryStarted: Boolean(session.bossFinalStoryStarted),
+      bossStoryCompleted: Boolean(session.bossStoryCompleted),
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {

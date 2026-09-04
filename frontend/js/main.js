@@ -9,7 +9,9 @@ import { createBattleScene } from "./scenes/battle-scene.js";
 import { createMimicBattleScene } from "./scenes/mimic-battle-scene.js";
 import { createEndingScene } from "./scenes/ending-scene.js";
 import { createLeaderboardScene } from "./scenes/leaderboard-scene.js";
+import { createFinalBossScene } from "./scenes/final-boss-scene.js";
 import { audioManager, bindGlobalUiSounds } from "./audio/audio-manager.js";
+import { canTriggerEnding } from "./game/ending-flow.js";
 
 const SCENE_FACTORIES = {
   title: createTitleScene,
@@ -19,6 +21,7 @@ const SCENE_FACTORIES = {
   mimicBattle: createMimicBattleScene,
   ending: createEndingScene,
   leaderboard: createLeaderboardScene,
+  finalBoss: createFinalBossScene,
 };
 
 class SceneManager {
@@ -34,6 +37,10 @@ class SceneManager {
       selectedEndingId: null,
       clearTimeMs: null,
       playerName: null,
+      bossBattleStarted: false,
+      bossBattleCompleted: false,
+      bossFinalStoryStarted: false,
+      bossStoryCompleted: false,
     };
     this.currentScene = null;
     this.currentSceneName = null;
@@ -52,6 +59,10 @@ class SceneManager {
     this.session.selectedEndingId = null;
     this.session.clearTimeMs = null;
     this.session.playerName = playerName;
+    this.session.bossBattleStarted = false;
+    this.session.bossBattleCompleted = false;
+    this.session.bossFinalStoryStarted = false;
+    this.session.bossStoryCompleted = false;
     stopGameTimer();
     this.goTo("story", { phase: "dialog", index: 0 });
   }
@@ -67,6 +78,15 @@ class SceneManager {
   }
 
   goTo(name, payload) {
+    if (name === "ending" && !canTriggerEnding(this.session)) {
+      console.warn("Ending blocked until the final boss battle and story are complete.");
+      if (this.currentSceneName !== "finalBoss") {
+        name = "exploration";
+        payload = this.currentPayload?.player ? { player: this.currentPayload.player } : undefined;
+      } else {
+        return;
+      }
+    }
     const createScene = SCENE_FACTORIES[name];
     if (!createScene) {
       throw new Error(`알 수 없는 씬입니다: ${name}`);
@@ -118,6 +138,10 @@ if (savedProgress && savedProgress.scene && savedProgress.scene !== "title" && S
   sceneManager.session.collectedPickups = new Set(savedProgress.collectedPickups ?? []);
   sceneManager.session.triggeredHazards = new Set(savedProgress.triggeredHazards ?? []);
   sceneManager.session.playerName = savedProgress.playerName ?? null;
+  sceneManager.session.bossBattleStarted = Boolean(savedProgress.bossBattleStarted);
+  sceneManager.session.bossBattleCompleted = Boolean(savedProgress.bossBattleCompleted);
+  sceneManager.session.bossFinalStoryStarted = Boolean(savedProgress.bossFinalStoryStarted);
+  sceneManager.session.bossStoryCompleted = Boolean(savedProgress.bossStoryCompleted);
   sceneManager.goTo(savedProgress.scene, savedProgress.payload ?? undefined);
 } else {
   sceneManager.goTo("title");

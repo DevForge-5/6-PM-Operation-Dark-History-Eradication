@@ -80,6 +80,7 @@ export const GAME_CONFIG = Object.freeze({
     // Placeholder idle sprite for the server-room final boss (흑화 최지훈) -
     // a 4-frame sheet, only frame 0 is drawn until the real fight is built.
     finalBoss: "./assets/images/bossAction/최종보스 1.png",
+    finalBossMagic: "./assets/images/bossAction/최종보스_마법 1.png",
     office: Object.freeze({
       principalIdle: "./assets/images/교장Assets/교장_눈치 못챔 2.png",
       principalSuspicious: "./assets/images/교장Assets/교장_확인함 1.png",
@@ -208,6 +209,11 @@ export const GAME_CONFIG = Object.freeze({
     y: 800,
     size: 128,
     frameSize: 128,
+  }),
+  finalBossBattle: Object.freeze({
+    phaseHpThresholds: Object.freeze([75, 50, 25, 0]),
+    playerInvulnerabilitySeconds: 1.1,
+    weakPointSeconds: 2.5,
   }),
   pickups: Object.freeze([
     Object.freeze({

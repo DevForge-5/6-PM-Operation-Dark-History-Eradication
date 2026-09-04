@@ -474,11 +474,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       onSirenDialogue: openSirenDialogue,
       onSirenFightUpdate: updateSirenHud,
       onSirenFightEnd: finishSirenFight,
-      // Placeholder: reaching the server-room final boss (흑화 최지훈) wins
-      // the run outright until the real fight replaces this trigger.
       onDefeatFinalBoss: () => {
-        audioManager.playSfx("mission_clear");
-        goTo("ending");
+        persistPosition();
+        goTo("finalBoss", { checkpoint: "intro" });
       },
     });
     const forcePauseCheckbox = node.querySelector("#force-pause-checkbox");
