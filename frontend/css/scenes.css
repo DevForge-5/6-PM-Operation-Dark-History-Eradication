@@ -900,6 +900,25 @@
   position: relative;
 }
 
+.stair-dodge__pips {
+  display: flex;
+  gap: 8px;
+}
+
+.stair-dodge__pip {
+  width: clamp(8px, 1.6vw, 12px);
+  aspect-ratio: 1;
+  border: 2px solid #7d8f3c;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.stair-dodge__pip--filled {
+  background: #d7ff2e;
+  border-color: #d7ff2e;
+  box-shadow: 0 0 6px rgb(215 255 46 / 70%);
+}
+
 .stair-dodge__stage {
   position: relative;
   width: 100%;

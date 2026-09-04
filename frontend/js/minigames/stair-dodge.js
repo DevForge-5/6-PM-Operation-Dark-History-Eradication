@@ -1,13 +1,20 @@
 import { audioManager } from "../audio/audio-manager.js";
 
-const REQUIRED_SUCCESSES = 4;
-const CROSS_SECONDS_BY_LEVEL = [2.4, 1.9, 1.5, 1.1];
-const HELL_MODE_LEVEL_INDEX = REQUIRED_SUCCESSES - 1;
+const REQUIRED_LEVELS = 4;
+const OBSTACLES_PER_LEVEL = 5;
+const HELL_MODE_LEVEL_INDEX = REQUIRED_LEVELS - 1;
+// Like Chrome's dino run: obstacles keep coming continuously within a
+// level (not one at a time with a stop after each), and both spawn rate
+// and travel speed ramp up level over level.
+const SPAWN_INTERVAL_SECONDS_BY_LEVEL = [1.3, 1.1, 0.95, 0.85];
+const CROSS_SECONDS_BY_LEVEL = [1.9, 1.65, 1.4, 1.2];
 const CHARACTER_X_RATIO = 0.24;
 const JUMP_DURATION_MS = 650;
-const RETRY_DELAY_MS = 650;
+const MISS_RETRY_DELAY_MS = 700;
+const LEVEL_CLEAR_PAUSE_MS = 500;
 const NEXT_LEVEL_DELAY_MS = 1100;
 const FINISH_DELAY_MS = 900;
+const FIRST_SPAWN_DELAY_SECONDS = 0.4;
 
 export function createStairDodge({ root, characterSprite, onComplete, onClose }) {
   const node = document.createElement("div");
@@ -19,11 +26,11 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     <div class="puzzle-terminal__frame">
       <button type="button" class="puzzle-terminal__close" data-action="close" data-sound="window_close" aria-label="미니게임 닫기">×</button>
       <div class="puzzle-terminal__screen stair-dodge__screen">
-        <p class="puzzle-terminal__count">0 / ${REQUIRED_SUCCESSES}</p>
+        <p class="puzzle-terminal__count">0 / ${REQUIRED_LEVELS}</p>
+        <div class="stair-dodge__pips"></div>
         <div class="stair-dodge__stage">
           <div class="stair-dodge__ground"></div>
           <div class="stair-dodge__character"></div>
-          <div class="stair-dodge__obstacle" hidden></div>
         </div>
         <p class="stair-dodge__taunt" hidden>헬 모드가 시작된다 😈</p>
         <div class="stair-dodge__banner" hidden></div>
@@ -34,8 +41,9 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
 
   const countLabel = node.querySelector(".puzzle-terminal__count");
   const screenEl = node.querySelector(".puzzle-terminal__screen");
+  const pipsEl = node.querySelector(".stair-dodge__pips");
+  const stageEl = node.querySelector(".stair-dodge__stage");
   const characterEl = node.querySelector(".stair-dodge__character");
-  const obstacleEl = node.querySelector(".stair-dodge__obstacle");
   const tauntEl = node.querySelector(".stair-dodge__taunt");
   const bannerEl = node.querySelector(".stair-dodge__banner");
   const closeButton = node.querySelector(".puzzle-terminal__close");
@@ -44,13 +52,13 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     characterEl.style.backgroundImage = `url("${characterSprite}")`;
   }
 
-  let successCount = 0;
-  let crossSeconds = CROSS_SECONDS_BY_LEVEL[0];
-  let obstacleProgress = 0;
-  let previousCenterRatio = 0;
+  let currentLevel = 0;
+  let dodgedInLevel = 0;
+  let spawnedInLevel = 0;
+  let spawnTimer = 0;
+  let obstacles = [];
   let isAirborne = false;
-  let resolved = false;
-  let roundActive = false;
+  let levelActive = false;
   let finished = false;
   let lastTimestamp = null;
   let frameId = null;
@@ -58,31 +66,54 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
   let advanceTimeoutId = null;
 
   function updateCount() {
-    countLabel.textContent = `${successCount} / ${REQUIRED_SUCCESSES}`;
+    countLabel.textContent = `${currentLevel} / ${REQUIRED_LEVELS}`;
   }
 
-  function obstacleCenterRatio() {
-    return 1.1 - obstacleProgress * 1.2;
+  function renderPips() {
+    pipsEl.innerHTML = "";
+    for (let i = 0; i < OBSTACLES_PER_LEVEL; i += 1) {
+      const pip = document.createElement("span");
+      pip.className = "stair-dodge__pip";
+      if (i < dodgedInLevel) {
+        pip.classList.add("stair-dodge__pip--filled");
+      }
+      pipsEl.appendChild(pip);
+    }
   }
 
-  function startRound() {
+  function clearObstacles() {
+    for (const obstacle of obstacles) {
+      obstacle.el.remove();
+    }
+    obstacles = [];
+  }
+
+  function spawnObstacle() {
+    const el = document.createElement("div");
+    el.className = "stair-dodge__obstacle";
+    stageEl.appendChild(el);
+    const centerRatio = 1.1;
+    el.style.left = `${centerRatio * 100}%`;
+    obstacles.push({ el, progress: 0, previousCenterRatio: centerRatio });
+    spawnedInLevel += 1;
+  }
+
+  function startLevel() {
     bannerEl.hidden = true;
-    crossSeconds = CROSS_SECONDS_BY_LEVEL[Math.min(successCount, CROSS_SECONDS_BY_LEVEL.length - 1)];
-    obstacleProgress = 0;
-    previousCenterRatio = obstacleCenterRatio();
+    clearObstacles();
+    dodgedInLevel = 0;
+    spawnedInLevel = 0;
+    spawnTimer = -FIRST_SPAWN_DELAY_SECONDS;
     isAirborne = false;
-    resolved = false;
-    roundActive = true;
-    obstacleEl.hidden = false;
-    obstacleEl.style.left = `${previousCenterRatio * 100}%`;
+    levelActive = true;
     characterEl.classList.remove("stair-dodge__character--jump");
-    tauntEl.hidden = successCount !== HELL_MODE_LEVEL_INDEX;
+    tauntEl.hidden = currentLevel !== HELL_MODE_LEVEL_INDEX;
+    renderPips();
   }
 
   function showBanner(text) {
     bannerEl.textContent = text;
     bannerEl.hidden = false;
-    obstacleEl.hidden = true;
   }
 
   function flashResult(success) {
@@ -125,36 +156,34 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
   }
 
   function handleMiss() {
-    resolved = true;
-    roundActive = false;
-    successCount = 0;
-    updateCount();
+    levelActive = false;
+    clearObstacles();
     audioManager.playSfx("qte_fail");
     flashResult(false);
-    obstacleEl.hidden = true;
-    advanceTimeoutId = window.setTimeout(startRound, RETRY_DELAY_MS);
+    advanceTimeoutId = window.setTimeout(startLevel, MISS_RETRY_DELAY_MS);
   }
 
-  function handleCleared() {
-    resolved = true;
-    roundActive = false;
-    successCount += 1;
-    updateCount();
+  function handleLevelCleared() {
+    levelActive = false;
+    clearObstacles();
     audioManager.playSfx("qte_success");
     flashResult(true);
-    obstacleEl.hidden = true;
+    currentLevel += 1;
+    updateCount();
 
-    if (successCount >= REQUIRED_SUCCESSES) {
+    if (currentLevel >= REQUIRED_LEVELS) {
       audioManager.playSfx("mission_clear");
-      showBanner("CLEAR!");
-      advanceTimeoutId = window.setTimeout(() => finish(true), FINISH_DELAY_MS);
+      advanceTimeoutId = window.setTimeout(() => {
+        showBanner("CLEAR!");
+        advanceTimeoutId = window.setTimeout(() => finish(true), FINISH_DELAY_MS);
+      }, LEVEL_CLEAR_PAUSE_MS);
       return;
     }
 
     advanceTimeoutId = window.setTimeout(() => {
       showBanner("NEXT LEVEL");
-      advanceTimeoutId = window.setTimeout(startRound, NEXT_LEVEL_DELAY_MS);
-    }, RETRY_DELAY_MS);
+      advanceTimeoutId = window.setTimeout(startLevel, NEXT_LEVEL_DELAY_MS);
+    }, LEVEL_CLEAR_PAUSE_MS);
   }
 
   function handleKeyDown(event) {
@@ -168,7 +197,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
       return;
     }
 
-    if (event.code !== "Space" || event.repeat || !roundActive || isAirborne) {
+    if (event.code !== "Space" || event.repeat || !levelActive || isAirborne) {
       return;
     }
 
@@ -196,22 +225,51 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
     const deltaSeconds = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
 
-    if (roundActive && !resolved) {
-      obstacleProgress = Math.min(1, obstacleProgress + deltaSeconds / crossSeconds);
-      const centerRatio = obstacleCenterRatio();
-      obstacleEl.style.left = `${centerRatio * 100}%`;
+    if (levelActive) {
+      const spawnInterval = SPAWN_INTERVAL_SECONDS_BY_LEVEL[currentLevel];
+      const crossSeconds = CROSS_SECONDS_BY_LEVEL[currentLevel];
 
-      // Resolve once, exactly when the obstacle's center passes the
-      // character's - not the instant it enters some wider "danger" band -
-      // so a jump timed anywhere before that instant still counts.
-      if (previousCenterRatio >= CHARACTER_X_RATIO && centerRatio < CHARACTER_X_RATIO) {
-        if (isAirborne) {
-          handleCleared();
-        } else {
-          handleMiss();
+      spawnTimer += deltaSeconds;
+      if (spawnTimer >= spawnInterval && spawnedInLevel < OBSTACLES_PER_LEVEL) {
+        spawnTimer -= spawnInterval;
+        spawnObstacle();
+      }
+
+      // Resolve each obstacle exactly once, the instant its center passes
+      // the character's - not the instant it enters some wider "danger"
+      // band - so a jump timed anywhere before that instant still counts.
+      let missed = false;
+      for (const obstacle of obstacles) {
+        obstacle.progress = Math.min(1, obstacle.progress + deltaSeconds / crossSeconds);
+        const centerRatio = 1.1 - obstacle.progress * 1.2;
+        obstacle.el.style.left = `${centerRatio * 100}%`;
+
+        if (obstacle.previousCenterRatio >= CHARACTER_X_RATIO && centerRatio < CHARACTER_X_RATIO) {
+          obstacle.resolved = true;
+          if (!isAirborne) {
+            missed = true;
+          }
+        }
+        obstacle.previousCenterRatio = centerRatio;
+      }
+
+      if (missed) {
+        handleMiss();
+      } else {
+        const stillResolved = obstacles.filter((obstacle) => obstacle.resolved);
+        if (stillResolved.length > 0) {
+          for (const obstacle of stillResolved) {
+            obstacle.el.remove();
+          }
+          obstacles = obstacles.filter((obstacle) => !obstacle.resolved);
+          dodgedInLevel += stillResolved.length;
+          renderPips();
+
+          if (dodgedInLevel >= OBSTACLES_PER_LEVEL) {
+            handleLevelCleared();
+          }
         }
       }
-      previousCenterRatio = centerRatio;
     }
 
     frameId = requestAnimationFrame(tick);
@@ -222,7 +280,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose })
   closeButton.focus();
   audioManager.playSfx("qte_start");
   updateCount();
-  startRound();
+  startLevel();
   frameId = requestAnimationFrame(tick);
 
   function destroy() {
