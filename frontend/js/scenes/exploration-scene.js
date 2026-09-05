@@ -1,14 +1,15 @@
 import { GameController } from "../game/game-controller.js";
 import { createHud } from "../ui/hud.js";
 import { ITEMS } from "../data/items.js";
-import { setGameTimerPaused, startGameTimer } from "../game/game-timer.js";
+import { formatTime, getClearTime, setGameTimerPaused, startGameTimer } from "../game/game-timer.js";
 import { createOptionModal } from "../ui/option-modal.js";
 import { createPuzzleTerminal } from "../minigames/puzzle-terminal.js";
 import { createStairDodge } from "../minigames/stair-dodge.js";
 import { createDialogBox } from "../ui/dialog.js";
 import { createChoicePanel } from "../ui/choice-panel.js";
 import { EVENTS } from "../data/events.js";
-import { advanceTime, applyCringeDelta, applyHpDelta } from "../game/game-state.js";
+import { advanceTime, applyCringeDelta, applyHpDelta, isCringeMaxed, setAbsoluteTime } from "../game/game-state.js";
+import { STORY_TIME_CHECKPOINTS } from "../game/story-timeline.js";
 import { audioManager } from "../audio/audio-manager.js";
 
 const SIREN_EVENT_ID = "musicRoomSiren";
@@ -44,6 +45,12 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
   let sirenChoicePanel = null;
   let isSirenDialogueOpen = false;
 
+  function applyStoryCheckpoint(minutes) {
+    setAbsoluteTime(session.stats, minutes);
+    hud.update(session.stats);
+    persist?.();
+  }
+
   function persistPosition() {
     persist?.({
       player: {
@@ -74,6 +81,12 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     setGameTimerPaused(shouldPauseGame);
     audioManager.setBgmPaused(shouldPauseGame);
     node.querySelector("#pause-overlay").hidden = !isPauseMenuOpen;
+    // The ESC pause menu can open over an already-open minigame overlay -
+    // freeze its own independent tick loop too, since it isn't driven by
+    // the (already-paused-by-shouldPauseGame) GameController.
+    const shouldFreezeMinigame = isPauseMenuOpen || isForcePaused || isSettingsOpen;
+    puzzleTerminal?.setPaused(shouldFreezeMinigame);
+    stairDodge?.setPaused(shouldFreezeMinigame);
   }
 
   function setPauseMenuOpen(isOpen) {
@@ -86,6 +99,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     isPauseMenuOpen = isOpen;
     syncPauseState();
     if (isOpen) {
+      node.querySelector("#pause-playtime").textContent = `플레이 시간 ${formatTime(getClearTime())}`;
       node.querySelector("#resume-button").focus();
     }
   }
@@ -116,6 +130,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       root: node.querySelector(".game-stage"),
       onComplete: () => {
         controller.setPuzzleSolved();
+        applyStoryCheckpoint(STORY_TIME_CHECKPOINTS.timingPuzzleSolved);
         closePuzzle();
       },
       onClose: closePuzzle,
@@ -137,6 +152,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       characterSprite: config.assets.player.down,
       onComplete: () => {
         controller.setMimicRoomPuzzleSolved();
+        applyStoryCheckpoint(STORY_TIME_CHECKPOINTS.jumpMapSolved);
         closeStairDodge();
       },
       onClose: closeStairDodge,
@@ -145,6 +161,10 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
           closeStairDodge();
         }
         controller.takeDamage(amount);
+        // The controller's own tick loop (which normally drives hud.update
+        // via onFrame) is paused while this minigame overlay is open, so
+        // the HUD needs an explicit nudge to reflect the damage live.
+        hud.update(session.stats);
         persistPosition();
         return !controller.playerDefeated;
       },
@@ -164,7 +184,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     }
 
     event.preventDefault();
-    if (isSettingsOpen || isPuzzleOpen || isStairDodgeOpen || isSirenDialogueOpen || controller?.isInputLocked) {
+    if (isSettingsOpen || controller?.isInputLocked) {
       return;
     }
     setPauseMenuOpen(!isPauseMenuOpen);
@@ -267,6 +287,9 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     };
 
     sirenDialog.setAdvanceHandler(() => {
+      if (isPauseMenuOpen || isForcePaused || isSettingsOpen) {
+        return;
+      }
       index += 1;
       if (index < lines.length) {
         showCurrent();
@@ -298,6 +321,7 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       advanceTime(session.stats, effect.minutesDelta);
     }
     hud.update(session.stats);
+    return isCringeMaxed(session.stats);
   }
 
   function updateSirenHud(snapshot) {
@@ -356,7 +380,14 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
         onSelect: (choice) => {
           sirenChoicePanel.destroy();
           sirenChoicePanel = null;
-          applySirenEffect(choice.effect);
+          const cringeMaxed = applySirenEffect(choice.effect);
+          if (cringeMaxed) {
+            closeSirenDialogue();
+            controller.state.isRunning = false;
+            controller.clearAllInput();
+            showDeathScreen();
+            return;
+          }
           showSirenLines([choice.resultText], () => {
             closeSirenDialogue();
             controller.resumeSirenFight(choice.effect);
@@ -374,13 +405,47 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
     if (hasWon) {
       session.clearedEvents.add(SIREN_EVENT_ID);
     }
-    applySirenEffect(outcome);
+    const cringeMaxed = applySirenEffect(outcome);
+    if (hasWon) {
+      // Overrides the win outcome's own minutesDelta above so the clock
+      // lands exactly on the fixed checkpoint, not delta-past it.
+      setAbsoluteTime(session.stats, STORY_TIME_CHECKPOINTS.sirenRound3Cleared);
+      hud.update(session.stats);
+    }
     persistPosition();
+
+    if (cringeMaxed) {
+      closeSirenDialogue();
+      controller.state.isRunning = false;
+      controller.clearAllInput();
+      showDeathScreen();
+      return;
+    }
 
     showSirenLines([outcome.resultText], () => {
       closeSirenDialogue();
       persistPosition();
     });
+  }
+
+  // Only hits 1-2 are checkpointed here; the 3rd (winning) hit is snapped in
+  // finishSirenFight() instead, after the win outcome's own minutesDelta
+  // applies, so that later delta can't push the clock past 17:25.
+  const SIREN_ROUND_CHECKPOINTS = {
+    1: STORY_TIME_CHECKPOINTS.sirenRound1Cleared,
+    2: STORY_TIME_CHECKPOINTS.sirenRound2Cleared,
+  };
+
+  function handleSirenRoundClear(hitNumber) {
+    const minutes = SIREN_ROUND_CHECKPOINTS[hitNumber];
+    if (minutes !== undefined) {
+      applyStoryCheckpoint(minutes);
+    }
+  }
+
+  function handleOfficePassed() {
+    session.triggeredHazards.add("officePassed");
+    applyStoryCheckpoint(STORY_TIME_CHECKPOINTS.officePassed);
   }
 
   function handlePrincipalStateChange(state) {
@@ -488,6 +553,8 @@ export function createExplorationScene({ root, config, session, payload, goTo, s
       onSirenDialogue: openSirenDialogue,
       onSirenFightUpdate: updateSirenHud,
       onSirenFightEnd: finishSirenFight,
+      onSirenRoundClear: handleSirenRoundClear,
+      onOfficePassed: handleOfficePassed,
       onDefeatFinalBoss: () => {
         persistPosition();
         goTo("finalBoss", { checkpoint: "intro" });

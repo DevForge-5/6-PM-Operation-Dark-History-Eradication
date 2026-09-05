@@ -41,6 +41,7 @@ class SceneManager {
       bossBattleCompleted: false,
       bossFinalStoryStarted: false,
       bossStoryCompleted: false,
+      bossCheckpointHp: null,
     };
     this.currentScene = null;
     this.currentSceneName = null;
@@ -63,6 +64,7 @@ class SceneManager {
     this.session.bossBattleCompleted = false;
     this.session.bossFinalStoryStarted = false;
     this.session.bossStoryCompleted = false;
+    this.session.bossCheckpointHp = null;
     stopGameTimer();
     this.goTo("story", { phase: "dialog", index: 0 });
   }
@@ -142,6 +144,7 @@ if (savedProgress && savedProgress.scene && savedProgress.scene !== "title" && S
   sceneManager.session.bossBattleCompleted = Boolean(savedProgress.bossBattleCompleted);
   sceneManager.session.bossFinalStoryStarted = Boolean(savedProgress.bossFinalStoryStarted);
   sceneManager.session.bossStoryCompleted = Boolean(savedProgress.bossStoryCompleted);
+  sceneManager.session.bossCheckpointHp = savedProgress.bossCheckpointHp ?? null;
   sceneManager.goTo(savedProgress.scene, savedProgress.payload ?? undefined);
 } else {
   sceneManager.goTo("title");

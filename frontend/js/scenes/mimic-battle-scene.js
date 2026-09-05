@@ -1,8 +1,9 @@
-import { applyHpDelta, isHpDepleted } from "../game/game-state.js";
+import { applyHpDelta, isHpDepleted, setAbsoluteTime } from "../game/game-state.js";
 import { setGameTimerPaused } from "../game/game-timer.js";
 import { audioManager } from "../audio/audio-manager.js";
 import { ITEMS } from "../data/items.js";
 import { createPauseOverlay } from "../ui/pause-overlay.js";
+import { STORY_TIME_CHECKPOINTS } from "../game/story-timeline.js";
 
 function setSpriteFrame(node, source, frameCount, frameIndex) {
   node.style.backgroundImage = `url("${source}")`;
@@ -180,19 +181,28 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, s
   let evasionBonus = payload?.evasionBonus ?? 0;
   let mimicDefeated = false;
   let playerDefeated = false;
-  let isPaused = false;
+  let isPauseMenuOpen = false;
+  let isForcePaused = false;
   let pauseOverlay = null;
 
-  function setPaused(next) {
-    if (next === isPaused) {
+  function isPaused() {
+    return isPauseMenuOpen || isForcePaused;
+  }
+
+  function setPauseMenuOpen(next) {
+    if (next === isPauseMenuOpen) {
       return;
     }
-    isPaused = next;
-    if (isPaused) {
+    isPauseMenuOpen = next;
+    if (isPauseMenuOpen) {
       pauseOverlay = createPauseOverlay({
         root: node,
-        onResume: () => setPaused(false),
+        onResume: () => setPauseMenuOpen(false),
         onHome: () => goTo("title", { preservePlayerName: true }),
+        onForcePauseChange: (checked) => {
+          isForcePaused = checked;
+        },
+        onRestart: () => startRun?.({ preservePlayerName: true }),
       });
     } else {
       pauseOverlay?.destroy();
@@ -205,7 +215,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, s
       return;
     }
     event.preventDefault();
-    setPaused(!isPaused);
+    setPauseMenuOpen(!isPauseMenuOpen);
   }
 
   function returnToExploration() {
@@ -223,7 +233,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, s
     playerDefeated = true;
     pauseOverlay?.destroy();
     pauseOverlay = null;
-    isPaused = false;
+    isPauseMenuOpen = false;
     persistBattleState();
     setGameTimerPaused(true);
     audioManager.setBgmPaused(true);
@@ -346,6 +356,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, s
     setMimicSprite("defeat");
     session.inventory.add(rewardItemId);
     session.clearedEvents.add("mimicBattle");
+    setAbsoluteTime(session.stats, STORY_TIME_CHECKPOINTS.mimicDefeated);
     persist?.({ player: payload?.player, phase: "reward", mimicHp: 0, evasionBonus });
     messageBox.showMessage(`${playerName}는(은) 보상으로 ${ITEMS[rewardItemId]?.name ?? rewardItemId}을(를) 획득했다!`, returnToExploration);
   }
@@ -393,7 +404,7 @@ export function createMimicBattleScene({ root, config, session, payload, goTo, s
     playerPanel.node.classList.add("mimic-battle__panel--player");
     updatePlayerPanel();
 
-    messageBox = createMessageBox({ root: node, isPaused: () => isPaused || playerDefeated });
+    messageBox = createMessageBox({ root: node, isPaused: () => isPaused() || playerDefeated });
 
     const deathOverlay = document.createElement("section");
     deathOverlay.id = "mimic-death-overlay";

@@ -19,7 +19,7 @@ export const EVENTS = Object.freeze({
         label: "[아이템] 에어팟 착용",
         type: "instant",
         requiresItem: "noiseCancelingEarbuds",
-        effect: { cringeDelta: -20, minutesDelta: 5, resultText: "노이즈 캔슬링으로 목소리가 차단된다." },
+        effect: { minutesDelta: 5, resultText: "노이즈 캔슬링으로 목소리가 차단된다." },
       },
       {
         id: "counter",
@@ -106,7 +106,6 @@ export const EVENTS = Object.freeze({
     },
     outcomes: {
       win: {
-        cringeDelta: -20,
         minutesDelta: 8,
         resultText: "세 번째 일격에 세이렌이 무너진다. 피아노들이 조용해지고, 그 시절 새벽 2시가 드디어 닫혔다.",
       },

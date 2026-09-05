@@ -8,10 +8,12 @@ export function createHud({ root, stats }) {
       <div class="hud__stat hud__stat--hp" role="meter" aria-label="HP">
         <img class="hud__stat-image" src="./assets/images/HPStatus.png" alt="" aria-hidden="true">
         <span class="hud__bar-empty" aria-hidden="true"></span>
+        <span class="hud__stat-value" aria-hidden="true"></span>
       </div>
       <div class="hud__stat hud__stat--cringe" role="meter" aria-label="흑역사 수치">
         <img class="hud__stat-image" src="./assets/images/Group 11.png" alt="" aria-hidden="true">
         <span class="hud__bar-empty" aria-hidden="true"></span>
+        <span class="hud__stat-value" aria-hidden="true"></span>
       </div>
     </div>
     <div class="hud__clock"></div>
@@ -43,4 +45,5 @@ function updateMeter(meter, value, max) {
   meter.setAttribute("aria-valuemin", "0");
   meter.setAttribute("aria-valuemax", String(max));
   meter.setAttribute("aria-valuenow", String(value));
+  meter.querySelector(".hud__stat-value").textContent = `${Math.round(value)} / ${max}`;
 }

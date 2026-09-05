@@ -11,7 +11,9 @@ import {
   isCringeMaxed,
   isHpDepleted,
   isTimeUp,
+  setAbsoluteTime,
 } from "../game/game-state.js";
+import { STORY_TIME_CHECKPOINTS } from "../game/story-timeline.js";
 import { audioManager } from "../audio/audio-manager.js";
 
 const RETREAT_DISTANCE = 64;
@@ -27,7 +29,7 @@ function getRetreatPosition(player) {
   return { x: player.x + offset.x, y: player.y + offset.y, facing: player.facing };
 }
 
-export function createBattleScene({ root, session, payload, goTo, persist }) {
+export function createBattleScene({ root, session, payload, goTo, startRun, persist }) {
   // musicRoomSiren no longer routes here (it plays out in the exploration
   // scene), so a stale save pointing at a choice-less event falls back rather
   // than mounting an empty choice panel.
@@ -38,28 +40,36 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
   let dialog = null;
   let choicePanel = null;
   let introIndex = payload?.introIndex ?? 0;
-  let isPaused = false;
-  let isQteActive = false;
+  let isPauseMenuOpen = false;
+  let isForcePaused = false;
   let pauseOverlay = null;
+
+  function isPaused() {
+    return isPauseMenuOpen || isForcePaused;
+  }
 
   function setDialogAdvance(handler) {
     dialog?.setAdvanceHandler(() => {
-      if (!isPaused) {
+      if (!isPaused()) {
         handler();
       }
     });
   }
 
-  function setPaused(next) {
-    if (next === isPaused || isQteActive) {
+  function setPauseMenuOpen(next) {
+    if (next === isPauseMenuOpen) {
       return;
     }
-    isPaused = next;
-    if (isPaused) {
+    isPauseMenuOpen = next;
+    if (isPauseMenuOpen) {
       pauseOverlay = createPauseOverlay({
         root: node,
-        onResume: () => setPaused(false),
+        onResume: () => setPauseMenuOpen(false),
         onHome: () => goTo("title", { preservePlayerName: true }),
+        onForcePauseChange: (checked) => {
+          isForcePaused = checked;
+        },
+        onRestart: () => startRun?.({ preservePlayerName: true }),
       });
     } else {
       pauseOverlay?.destroy();
@@ -72,7 +82,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
       return;
     }
     event.preventDefault();
-    setPaused(!isPaused);
+    setPauseMenuOpen(!isPauseMenuOpen);
   }
 
   function mount() {
@@ -135,9 +145,7 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
 
     let outcome = choice.effect;
     if (choice.type === "qte") {
-      isQteActive = true;
-      const success = await runQte({ root: node });
-      isQteActive = false;
+      const success = await runQte({ root: node, isPaused });
       outcome = success ? choice.onSuccess : choice.onFail;
     }
     const isRetry = Boolean(outcome.retry);
@@ -153,6 +161,9 @@ export function createBattleScene({ root, session, payload, goTo, persist }) {
     }
     if (!isRetry) {
       session.clearedEvents.add(event.id);
+      if (event.id === "hallwayShadow") {
+        setAbsoluteTime(session.stats, STORY_TIME_CHECKPOINTS.shadowDefeated);
+      }
     }
     hud.update(session.stats);
 

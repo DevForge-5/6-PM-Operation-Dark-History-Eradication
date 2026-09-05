@@ -261,11 +261,14 @@ export const GAME_CONFIG = Object.freeze({
     // their bounding boxes were touching. These x's instead line up the
     // actual painted pixels edge-to-edge (measured via each PNG's alpha
     // bounding box) so the row reads as one continuous shelf of vases.
+    // Shifted 36px left of the original values so the row clears the
+    // wall's corner turn (~x:3074) with a comfortable gap instead of the
+    // last vase's box overlapping into it.
     vases: Object.freeze([
-      Object.freeze({ x: 2950, y: 64, size: 64 }),
-      Object.freeze({ x: 2976, y: 64, size: 64 }),
-      Object.freeze({ x: 3002, y: 64, size: 64 }),
-      Object.freeze({ x: 3019, y: 64, size: 64 }),
+      Object.freeze({ x: 2914, y: 64, size: 64 }),
+      Object.freeze({ x: 2940, y: 64, size: 64 }),
+      Object.freeze({ x: 2966, y: 64, size: 64 }),
+      Object.freeze({ x: 2983, y: 64, size: 64 }),
     ]),
     alertDamagePerSecond: 80,
     vaseAttack: Object.freeze({

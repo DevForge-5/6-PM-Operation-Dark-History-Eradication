@@ -105,7 +105,10 @@ export function createLeaderboardScene({ root, goTo }) {
     root.appendChild(node);
 
     const grid = node.querySelector("[data-role='leaderboard-grid']");
-    for (const endingId of ENDING_IDS) {
+    // Secret 엔딩은 리더보드에 노출하면 그 자체로 스포일러가 되므로 목록에서
+    // 제외한다. 랭킹 제출/조회 등 엔딩 시스템 자체는 그대로 유지된다.
+    const visibleEndingIds = ENDING_IDS.filter((endingId) => ENDINGS[endingId].type !== "Secret");
+    for (const endingId of visibleEndingIds) {
       const ending = ENDINGS[endingId];
       const card = document.createElement("button");
       const type = document.createElement("span");

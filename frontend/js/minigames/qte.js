@@ -1,6 +1,6 @@
 import { audioManager } from "../audio/audio-manager.js";
 
-export function runQte({ root, durationSeconds = 3, targetPresses = 8 }) {
+export function runQte({ root, durationSeconds = 3, targetPresses = 8, isPaused = () => false }) {
   return new Promise((resolve) => {
     audioManager.playSfx("qte_start");
     const node = document.createElement("div");
@@ -36,7 +36,7 @@ export function runQte({ root, durationSeconds = 3, targetPresses = 8 }) {
     }
 
     function handleKeyDown(event) {
-      if (event.code !== "Space" || finished) {
+      if (event.code !== "Space" || finished || isPaused()) {
         return;
       }
 
@@ -54,8 +54,11 @@ export function runQte({ root, durationSeconds = 3, targetPresses = 8 }) {
         lastTimestamp = timestamp;
       }
 
-      elapsedSeconds += (timestamp - lastTimestamp) / 1000;
+      const deltaSeconds = (timestamp - lastTimestamp) / 1000;
       lastTimestamp = timestamp;
+      if (!isPaused()) {
+        elapsedSeconds += deltaSeconds;
+      }
 
       const ratio = Math.min(elapsedSeconds / durationSeconds, 1);
       fill.style.width = `${(1 - ratio) * 100}%`;

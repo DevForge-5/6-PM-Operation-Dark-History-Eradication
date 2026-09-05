@@ -17,6 +17,12 @@ const CHARACTER_MAX_X_RATIO = 0.92;
 const CHARACTER_MOVE_SPEED_RATIO = 0.62;
 const COLLISION_RADIUS_RATIO = 0.075;
 const JUMP_DURATION_MS = 650;
+// A press queued mid-air (see startJump's comment) may chain into one more
+// jump so close obstacles can be cleared without a grounded beat between
+// them - but only once. Without this cap, mashing Space keeps re-queuing a
+// chain on every jump, so isAirborne (the collision-immunity flag) never
+// goes false and the player takes no damage no matter what they touch.
+const MAX_JUMP_CHAIN = 1;
 const MISS_RETRY_DELAY_MS = 700;
 const LEVEL_CLEAR_PAUSE_MS = 500;
 const NEXT_LEVEL_DELAY_MS = 1100;
@@ -67,8 +73,10 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
   let obstacles = [];
   let isAirborne = false;
   let bufferedJump = false;
+  let jumpChainDepth = 0;
   let levelActive = false;
   let finished = false;
+  let isPaused = false;
   let lastTimestamp = null;
   let frameId = null;
   let jumpTimeoutId = null;
@@ -125,6 +133,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     spawnTimer = -FIRST_SPAWN_DELAY_SECONDS;
     isAirborne = false;
     bufferedJump = false;
+    jumpChainDepth = 0;
     characterXRatio = CHARACTER_START_X_RATIO;
     movement.left = false;
     movement.right = false;
@@ -219,7 +228,8 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     }, LEVEL_CLEAR_PAUSE_MS);
   }
 
-  function startJump() {
+  function startJump(isChain = false) {
+    jumpChainDepth = isChain ? jumpChainDepth + 1 : 0;
     isAirborne = true;
     characterEl.classList.remove("stair-dodge__character--jump");
     // eslint-disable-next-line no-unused-expressions
@@ -233,7 +243,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
       // back-to-back obstacles can be chained without missing a beat.
       if (bufferedJump && levelActive) {
         bufferedJump = false;
-        startJump();
+        startJump(true);
       }
     }, JUMP_DURATION_MS);
   }
@@ -251,7 +261,7 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     }[event.code];
     if (direction) {
       event.preventDefault();
-      if (levelActive) {
+      if (levelActive && !isPaused) {
         movement[direction] = true;
       }
       return;
@@ -268,12 +278,17 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     // Only the mouse click on the X (handleClick) is allowed to close it.
     event.preventDefault();
 
-    if (event.repeat || !levelActive) {
+    if (event.repeat || !levelActive || isPaused) {
       return;
     }
 
     if (isAirborne) {
-      bufferedJump = true;
+      // Capped so mashing Space can't keep re-queuing a chain forever and
+      // holding isAirborne (collision immunity) on indefinitely - see
+      // MAX_JUMP_CHAIN.
+      if (jumpChainDepth < MAX_JUMP_CHAIN) {
+        bufferedJump = true;
+      }
       return;
     }
 
@@ -311,6 +326,11 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     }
     const deltaSeconds = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
+
+    if (isPaused) {
+      frameId = requestAnimationFrame(tick);
+      return;
+    }
 
     if (levelActive) {
       const settings = getLevelSettings();
@@ -388,5 +408,12 @@ export function createStairDodge({ root, characterSprite, onComplete, onClose, o
     cleanup();
   }
 
-  return { node, destroy };
+  function setPaused(next) {
+    isPaused = next;
+    if (isPaused) {
+      clearMovement();
+    }
+  }
+
+  return { node, destroy, setPaused };
 }

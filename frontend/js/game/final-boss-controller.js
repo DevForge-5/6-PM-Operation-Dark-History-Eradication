@@ -460,13 +460,13 @@ export class FinalBossController {
       ctx.restore();
     }
     for (const clone of this.clones) this.drawBoss(clone.x, clone.y, 0.35, false);
-    if ((this.boss.state === "telegraph" || (this.phase === 1 && this.boss.state === "charge")) && this.boss.target) {
+    if (this.boss.state === "telegraph" && this.boss.target) {
       ctx.strokeStyle = "rgba(255,65,90,.75)"; ctx.lineWidth = 5; ctx.setLineDash([18, 12]);
       ctx.beginPath(); ctx.moveTo(this.boss.x, this.boss.y); ctx.lineTo(this.boss.x + this.boss.target.x * 900, this.boss.y + this.boss.target.y * 900); ctx.stroke(); ctx.setLineDash([]);
     }
     this.drawBoss(this.boss.x, this.boss.y, 1, this.boss.vulnerable > 0);
     if (!(this.player.invulnerable > 0 && Math.floor(performance.now() / 80) % 2)) this.drawPlayer();
-    if (this.player.attackCooldown > 0.18) { ctx.strokeStyle = "#f6e59b"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(this.player.x, this.player.y, 52, -1.2, 1.2); ctx.stroke(); }
+    if (this.player.attackCooldown > 0.18) { ctx.strokeStyle = "#f6e59b"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(this.player.x, this.player.y, 52, 0, Math.PI * 2); ctx.stroke(); }
     if (this.phase === FINAL_BOSS_PHASE.DEFEATED) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.7, this.defeatTimer / 4)})`; ctx.fillRect(0, 0, width, height); }
   }
 

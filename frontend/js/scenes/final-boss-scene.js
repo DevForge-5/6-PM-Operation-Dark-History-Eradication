@@ -1,7 +1,8 @@
 import { FinalBossController, FINAL_BOSS_PHASE } from "../game/final-boss-controller.js";
-import { applyHpDelta, isHpDepleted } from "../game/game-state.js";
+import { isHpDepleted, setAbsoluteHp } from "../game/game-state.js";
 import { setGameTimerPaused } from "../game/game-timer.js";
 import { audioManager } from "../audio/audio-manager.js";
+import { createPauseOverlay } from "../ui/pause-overlay.js";
 
 const INTRO_LINES = [
   ["흑화 최지훈", "여기까지 올 줄은 몰랐네. 이미 서버는 네 흑역사를 읽기 시작했어."],
@@ -21,14 +22,20 @@ function loadImage(source) {
   return image;
 }
 
-export function createFinalBossScene({ root, config, session, payload, goTo, persist }) {
+export function createFinalBossScene({ root, config, session, payload, goTo, startRun, persist }) {
   let node = null;
   let controller = null;
   let transitionTimer = null;
   let phaseTransitionTimer = null;
   let hasFinishedBattle = false;
-  let isPauseOpen = false;
+  let isPauseMenuOpen = false;
+  let isForcePaused = false;
+  let pauseOverlay = null;
   let advanceDialogue = null;
+
+  function isPaused() {
+    return isPauseMenuOpen || isForcePaused;
+  }
 
   function setOverlay(title, subtitle = "", visible = true) {
     const overlay = node.querySelector(".final-boss-transition");
@@ -48,7 +55,7 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
       speaker.textContent = lines[index][0];
       text.textContent = lines[index][1];
     };
-    advanceDialogue = () => {
+    const advance = () => {
       index += 1;
       if (index < lines.length) render();
       else {
@@ -56,6 +63,11 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
         panel.onclick = null;
         advanceDialogue = null;
         onDone();
+      }
+    };
+    advanceDialogue = () => {
+      if (!isPaused()) {
+        advance();
       }
     };
     panel.onclick = advanceDialogue;
@@ -100,7 +112,7 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
     const hp = Math.max(0, snapshot.bossHp / snapshot.bossMaxHp * 100);
     node.querySelector(".final-boss-hud__fill").style.width = `${hp}%`;
     node.querySelector(".final-boss-hud__weakness").textContent = snapshot.vulnerable ? "CORE OPEN — SPACE / E" : "공격 패턴을 피하고 약점을 기다리세요";
-    node.querySelector(".final-boss-player-hp").textContent = `HP ${Math.ceil(snapshot.playerHp)} / ${session.stats.hpMax}`;
+    node.querySelector(".final-boss-player-hp").textContent = `HP ${snapshot.playerHp.toFixed(2)} / ${session.stats.hpMax}`;
     if (isHpDepleted(session.stats)) showRetry();
   }
 
@@ -114,11 +126,14 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
   }
 
   function retry() {
-    applyHpDelta(session.stats, session.stats.hpMax);
+    setAbsoluteHp(session.stats, session.bossCheckpointHp ?? session.stats.hpMax);
     session.bossBattleStarted = true;
     session.bossBattleCompleted = false;
     session.bossFinalStoryStarted = false;
     session.bossStoryCompleted = false;
+    // A checked "force pause" left over from before death would otherwise
+    // stick forever, since retry() doesn't remount the scene.
+    isForcePaused = false;
     node.classList.remove("is-boss-defeated");
     node.querySelector(".final-boss-retry").hidden = true;
     controller.reset();
@@ -150,13 +165,37 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
     transitionTimer = window.setTimeout(() => goTo("ending"), 2200);
   }
 
-  function togglePause() {
-    if (hasFinishedBattle || !controller) return;
-    isPauseOpen = !isPauseOpen;
-    node.querySelector(".final-boss-pause").hidden = !isPauseOpen;
-    controller.setPaused(isPauseOpen);
-    setGameTimerPaused(isPauseOpen);
-    audioManager.setBgmPaused(isPauseOpen);
+  function setPauseMenuOpen(next) {
+    if (next === isPauseMenuOpen || !controller) {
+      return;
+    }
+    if (next && node.querySelector(".final-boss-retry").hidden === false) {
+      // Don't stack the pause menu over the game-over retry screen.
+      return;
+    }
+    isPauseMenuOpen = next;
+    if (isPauseMenuOpen) {
+      controller.setPaused(true);
+      setGameTimerPaused(true);
+      audioManager.setBgmPaused(true);
+      pauseOverlay = createPauseOverlay({
+        root: node,
+        onResume: () => setPauseMenuOpen(false),
+        onHome: () => goTo("title", { preservePlayerName: true }),
+        onForcePauseChange: (checked) => {
+          isForcePaused = checked;
+        },
+        onRestart: () => startRun?.({ preservePlayerName: true }),
+      });
+    } else {
+      pauseOverlay?.destroy();
+      pauseOverlay = null;
+      if (!isForcePaused) {
+        controller.setPaused(false);
+        setGameTimerPaused(false);
+        audioManager.setBgmPaused(false);
+      }
+    }
   }
 
   function handleKey(event) {
@@ -169,7 +208,7 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
     }
     if (event.code === "Escape") {
       event.preventDefault();
-      togglePause();
+      setPauseMenuOpen(!isPauseMenuOpen);
     }
   }
 
@@ -184,11 +223,10 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
           <div class="final-boss-hud__bar"><span class="final-boss-hud__fill"></span></div>
           <p class="final-boss-hud__weakness">공격 패턴을 피하고 약점을 기다리세요</p>
         </header>
-        <p class="final-boss-player-hp">HP ${session.stats.hp} / ${session.stats.hpMax}</p>
+        <p class="final-boss-player-hp">HP ${session.stats.hp.toFixed(2)} / ${session.stats.hpMax}</p>
         <p class="final-boss-controls">이동 WASD / 방향키 · 공격/반사 SPACE / E · ESC 일시정지</p>
         <section class="final-boss-dialogue" hidden><strong></strong><p></p><small>클릭 · Enter · Space</small></section>
         <section class="final-boss-transition" hidden><strong></strong><span></span></section>
-        <section class="final-boss-pause" hidden><h2>PAUSED</h2><button type="button" data-action="resume">재개</button><button type="button" data-action="home">홈으로</button></section>
         <section class="final-boss-retry" hidden><h2>MISSION FAILED</h2><p>최종 보스 직전부터 다시 시도합니다.</p><button type="button" data-action="retry">재도전</button><button type="button" data-action="home">홈으로</button></section>
       </section>`;
     root.appendChild(node);
@@ -211,7 +249,6 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
     node.addEventListener("click", (event) => {
       const action = event.target.closest("[data-action]")?.dataset.action;
       if (action === "retry") retry();
-      if (action === "resume") togglePause();
       if (action === "home") goTo("title");
     });
     window.addEventListener("keydown", handleKey);
@@ -222,7 +259,10 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
       session.bossFinalStoryStarted = true;
       showDialogue(OUTRO_LINES, showSixOClock);
     } else {
-      applyHpDelta(session.stats, session.stats.hpMax);
+      // Carries over the player's actual HP from exploration instead of
+      // healing to full, and records it as the checkpoint retry() restores
+      // to after an in-battle death (instead of a full heal).
+      session.bossCheckpointHp = session.stats.hp;
       session.bossBattleStarted = true;
       persist?.({ checkpoint: "intro" });
       showDialogue(INTRO_LINES, beginBattle);
@@ -234,6 +274,8 @@ export function createFinalBossScene({ root, config, session, payload, goTo, per
     window.clearTimeout(phaseTransitionTimer);
     window.removeEventListener("keydown", handleKey);
     advanceDialogue = null;
+    pauseOverlay?.destroy();
+    pauseOverlay = null;
     controller?.destroy();
     controller = null;
     setGameTimerPaused(false);

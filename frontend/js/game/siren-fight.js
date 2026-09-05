@@ -18,7 +18,7 @@ function rectanglesOverlap(a, b) {
 }
 
 export class SirenFight {
-  constructor({ config, onDamage, onSirenHit, onDialogue, onFinish, onUpdate }) {
+  constructor({ config, onDamage, onSirenHit, onDialogue, onFinish, onUpdate, onRoundClear }) {
     this.config = config;
     this.settings = config.musicRoom.fight;
     this.onDamage = onDamage;
@@ -26,6 +26,7 @@ export class SirenFight {
     this.onDialogue = onDialogue;
     this.onFinish = onFinish;
     this.onUpdate = onUpdate;
+    this.onRoundClear = onRoundClear;
 
     this.phase = "idle"; // idle | dodge | stun | hitPause | dialogue | done
     this.roundIndex = 0;
@@ -230,6 +231,10 @@ export class SirenFight {
     this.phase = "hitPause";
     this.phaseElapsed = 0;
     this.onSirenHit?.(this.sirenHp);
+    // Hit number (1-based), not roundIndex: a missed stun window still
+    // advances roundIndex without landing a hit, so roundIndex can outpace
+    // how many of the 3 counters have actually landed.
+    this.onRoundClear?.(this.settings.sirenHp - this.sirenHp);
     this.onUpdate?.(this.snapshot);
   }
 

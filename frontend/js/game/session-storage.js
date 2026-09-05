@@ -15,6 +15,7 @@ export function saveProgress(sceneName, payload, session) {
       bossBattleCompleted: Boolean(session.bossBattleCompleted),
       bossFinalStoryStarted: Boolean(session.bossFinalStoryStarted),
       bossStoryCompleted: Boolean(session.bossStoryCompleted),
+      bossCheckpointHp: session.bossCheckpointHp ?? null,
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {

@@ -203,7 +203,9 @@ export class GameController {
     onSirenDialogue,
     onSirenFightEnd,
     onSirenFightUpdate,
+    onSirenRoundClear,
     onDefeatFinalBoss,
+    onOfficePassed,
   }) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: false });
@@ -261,9 +263,12 @@ export class GameController {
       onDialogue: (dialogueId) => onSirenDialogue?.(dialogueId),
       onFinish: (hasWon) => this.handleSirenFightEnd(hasWon),
       onUpdate: (snapshot) => onSirenFightUpdate?.(snapshot),
+      onRoundClear: (round) => onSirenRoundClear?.(round),
     });
     this.onSirenFightUpdate = onSirenFightUpdate;
     this.onDefeatFinalBoss = onDefeatFinalBoss;
+    this.onOfficePassed = onOfficePassed;
+    this.officePassed = Boolean(triggeredHazardIds?.has("officePassed"));
     this.finalBossDefeated = false;
     this.isNearComputer = false;
     this.isNearMimicRoomComputer = false;
@@ -724,6 +729,13 @@ export class GameController {
       if (wasInOffice && this.principalState !== "seated") {
         this.principalState = "seated";
         this.onPrincipalStateChange?.(this.principalState);
+      }
+      // One-shot: fires the first time the player leaves the office (any
+      // exit, not just toward the stairs), used as the "교장실 통과" story
+      // checkpoint.
+      if (wasInOffice && !this.officePassed) {
+        this.officePassed = true;
+        this.onOfficePassed?.();
       }
       return;
     }

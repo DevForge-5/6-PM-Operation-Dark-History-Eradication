@@ -42,6 +42,7 @@ export function createPuzzleTerminal({ root, requiredSuccesses = 4, onComplete, 
   let frameId = null;
   let finished = false;
   let inputLocked = false;
+  let isPaused = false;
 
   function updateCount() {
     countLabel.textContent = `${successCount} / ${requiredSuccesses}`;
@@ -91,21 +92,23 @@ export function createPuzzleTerminal({ root, requiredSuccesses = 4, onComplete, 
   }
 
   function handleKeyDown(event) {
-    if (finished || inputLocked) {
-      return;
-    }
-
-    if (event.code === "Escape") {
-      event.preventDefault();
-      finish(false);
-      return;
-    }
-
     if (event.code !== "Space") {
       return;
     }
 
+    // Always swallow Space, even on the early-return paths below - the
+    // close button holds focus (see closeButton.focus() below), and the
+    // browser's default "Space activates the focused button" behavior
+    // would otherwise close this out from under the player mid-mash
+    // (every keydown that returns early while inputLocked/paused used to
+    // leave Space unhandled, so its keyup fired a native click on the
+    // focused close button). Only the mouse click on the X can close it.
     event.preventDefault();
+
+    if (finished || inputLocked || isPaused) {
+      return;
+    }
+
     inputLocked = true;
     const hit = progress >= targetStart && progress <= targetStart + TARGET_WIDTH_RATIO;
 
@@ -142,7 +145,7 @@ export function createPuzzleTerminal({ root, requiredSuccesses = 4, onComplete, 
     const deltaSeconds = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
 
-    if (!inputLocked) {
+    if (!inputLocked && !isPaused) {
       progress += (direction * deltaSeconds) / traverseSeconds;
       if (progress >= 1) {
         progress = 1;
@@ -173,5 +176,9 @@ export function createPuzzleTerminal({ root, requiredSuccesses = 4, onComplete, 
     cleanup();
   }
 
-  return { node, destroy };
+  function setPaused(next) {
+    isPaused = next;
+  }
+
+  return { node, destroy, setPaused };
 }

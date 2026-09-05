@@ -436,7 +436,9 @@
   gap: clamp(34px, 5vh, 72px);
   background: rgb(8 8 8 / 70%);
   backdrop-filter: blur(10px) grayscale(0.7) brightness(0.62);
-  z-index: 5;
+  /* Above minigame/death/option overlays (z-index: 20) and the HUD (21) so
+     ESC can still open it - and see it - over any of those. */
+  z-index: 22;
 }
 
 .pause-overlay[hidden] {
@@ -453,6 +455,14 @@
   font-size: clamp(30px, 4.4vw, 72px);
   line-height: 1;
   text-shadow: 0 8px 18px rgb(0 0 0 / 35%);
+}
+
+.pause-overlay__playtime {
+  margin: 0;
+  color: rgb(255 255 255 / 78%);
+  font-family: "Galmuri11", monospace;
+  font-size: clamp(14px, 1.6vw, 22px);
+  text-shadow: 0 4px 10px rgb(0 0 0 / 35%);
 }
 
 .pause-overlay__title-icon {
@@ -644,7 +654,10 @@
   align-items: flex-start;
   gap: 16px;
   pointer-events: none;
-  z-index: 2;
+  /* Above the puzzle-terminal/stair-dodge/death/option overlays (all
+     z-index: 20) so HP/cringe stay sharp instead of getting caught in
+     their backdrop-filter blur and dark tint. */
+  z-index: 21;
   color: var(--message-text);
 }
 
@@ -676,6 +689,23 @@
   border-radius: 0 3px 3px 0;
   background: #25130d;
   transition: width 120ms ease-out;
+}
+
+.hud__stat-value {
+  position: absolute;
+  top: 47%;
+  right: 7.7%;
+  width: 69.9%;
+  height: 9.4%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Galmuri11", monospace;
+  font-size: clamp(11px, 1.1vw, 15px);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  pointer-events: none;
 }
 
 .hud__clock {
@@ -1573,7 +1603,10 @@
   cursor: pointer;
 }
 
-.leaderboard-card:last-child {
+/* Centers a trailing odd-one-out card instead of stretching it full width
+   (only matches when the last card is also odd-indexed, i.e. the total
+   count is odd) so an even card count lays out as a plain 2-column grid. */
+.leaderboard-card:nth-child(odd):last-child {
   grid-column: 1 / -1;
   width: calc(50% - 9px);
   justify-self: center;
@@ -1673,7 +1706,7 @@
     grid-template-columns: 1fr;
   }
 
-  .leaderboard-card:last-child {
+  .leaderboard-card:nth-child(odd):last-child {
     grid-column: auto;
     width: 100%;
   }

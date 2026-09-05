@@ -71,6 +71,13 @@ export function applyHpDelta(stats, delta) {
   return stats.hp;
 }
 
+// Sets HP directly to a known value (e.g. restoring a saved checkpoint)
+// instead of applying a relative delta.
+export function setAbsoluteHp(stats, hp) {
+  stats.hp = roundToPrecision(clamp(hp, 0, stats.hpMax));
+  return stats.hp;
+}
+
 export function applyCringeDelta(stats, delta) {
   stats.cringe = roundToPrecision(clamp(stats.cringe + delta, 0, stats.cringeMax));
   return stats.cringe;
@@ -78,6 +85,15 @@ export function applyCringeDelta(stats, delta) {
 
 export function advanceTime(stats, minutesDelta) {
   stats.timeMinutes = Math.min(stats.timeMinutes + minutesDelta, stats.limitMinutes);
+  return stats.timeMinutes;
+}
+
+// Snaps the clock to a fixed in-game time, overriding whatever the smaller
+// per-choice minutesDelta ticks added up to during that stage. Used at major
+// story checkpoints (see game/story-timeline.js) so the displayed time always
+// matches the same fixed schedule regardless of how a stage was played.
+export function setAbsoluteTime(stats, totalMinutes) {
+  stats.timeMinutes = Math.min(totalMinutes, stats.limitMinutes);
   return stats.timeMinutes;
 }
 
